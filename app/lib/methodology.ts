@@ -63,6 +63,15 @@ export const FIVE_FORMULAS: Formula[] = [
 
 // Законы на 10 ("большие друзья" / друзья): переход через десяток.
 export const TEN_FORMULAS: Formula[] = [
+  { delta: -9, label: "-9", mechanic: "+1 -10" },
+  { delta: -8, label: "-8", mechanic: "+2 -10" },
+  { delta: -7, label: "-7", mechanic: "+3 -10" },
+  { delta: -6, label: "-6", mechanic: "+4 -10" },
+  { delta: -5, label: "-5", mechanic: "+5 -10" },
+  { delta: -4, label: "-4", mechanic: "+6 -10" },
+  { delta: -3, label: "-3", mechanic: "+7 -10" },
+  { delta: -2, label: "-2", mechanic: "+8 -10" },
+  { delta: -1, label: "-1", mechanic: "+9 -10" },
   { delta: 1, label: "+1", mechanic: "-9 +10" },
   { delta: 2, label: "+2", mechanic: "-8 +10" },
   { delta: 3, label: "+3", mechanic: "-7 +10" },
@@ -327,15 +336,81 @@ function genDouble(rows: number, rand: () => number): Example | null {
   return base ? scaleExample(base, 11) : null;
 }
 
-// Трёхзначные до 999 по тому же первому принципу: 111/222/.../999 как x111
-// от подтверждённой логики прямых ходов 1..9.
-function genTriple(rows: number, rand: () => number): Example | null {
-  const base = genMovements(1, rows, rand);
-  return base ? scaleExample(base, 111) : null;
+function digitsToNumber(digits: number[]): number {
+  return digits.reduce((sum, digit) => sum * 10 + digit, 0);
 }
 
-function fallback(rows: number): Example {
-  const pattern = [4, 5, -8, 1, 7, -5, 3, -4, 6, -9];
+function isDirectDelta(current: number, delta: number): boolean {
+  const info = classify(current, delta);
+  return Boolean(info && info.kind === "direct" && info.carry === 0 && info.newU >= 0 && info.newU <= 9);
+}
+
+// Трёхзначные до 999: прямые поразрядные ходы без переносов и обменов.
+// В каждом ряду знак общий для всего числа, а каждая цифра проверяется как
+// отдельное движение на абакусе.
+function genTriple(rows: number, rand: () => number): Example | null {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const current = [
+      1 + Math.floor(rand() * 9),
+      Math.floor(rand() * 10),
+      Math.floor(rand() * 10),
+    ];
+    const operands = [digitsToNumber(current)];
+    const steps: Step[] = [{ delta: operands[0], kind: "direct", running: operands[0] }];
+    let total = operands[0];
+    let ok = true;
+
+    for (let row = 1; row < rows; row++) {
+      const rowCandidates: number[] = [];
+      for (const sign of [1, -1]) {
+        const perDigit: number[][] = current.map((digit, index) => {
+          const min = index === 0 ? 1 : 0;
+          const result: number[] = [];
+          for (let value = min; value <= 9; value++) {
+            if (value === 0 && index === 0) continue;
+            if (isDirectDelta(digit, sign * value)) result.push(value);
+          }
+          return result;
+        });
+        if (perDigit.every((list) => list.length > 0)) {
+          for (let i = 0; i < 14; i++) {
+            const digits = perDigit.map((list) => pick(list, rand));
+            const operand = sign * digitsToNumber(digits);
+            if (operand !== 0 && total + operand >= 0) rowCandidates.push(operand);
+          }
+        }
+      }
+
+      if (!rowCandidates.length) {
+        ok = false;
+        break;
+      }
+      const operand = pick(rowCandidates, rand);
+      const sign = operand >= 0 ? 1 : -1;
+      const absDigits = String(Math.abs(operand)).padStart(3, "0").split("").map(Number);
+      absDigits.forEach((digit, index) => {
+        current[index] += sign * digit;
+      });
+      total += operand;
+      operands.push(operand);
+      steps.push({ delta: operand, kind: "direct", running: total });
+    }
+
+    if (ok) return finalize(operands, steps, total);
+  }
+  return null;
+}
+
+function fallback(rows: number, taskType: TaskType): Example {
+  const patterns: Record<TaskType, number[]> = {
+    movements: [4, 5, -8, 1, 7, -5, 3, -4, 6, -9],
+    tens: [40, 50, -80, 10, 70, -50, 30, -40, 60, -90],
+    double: [44, 55, -88, 11, 77, -55, 33, -44, 66, -99],
+    triple: [438, 551, -882, 110, 327, -105, 220, -330, 101, -202],
+    formula5: [4, 1, -5, 2, -1, 3, -4, 5, -2, 1],
+    formula10: [8, 2, -1, 3, -2, 5, -6, 4, -3, 1],
+  };
+  const pattern = patterns[taskType];
   const operands = Array.from({ length: rows }, (_, i) => pattern[i % pattern.length]);
   const steps: Step[] = [];
   let total = 0;
@@ -370,7 +445,7 @@ export function generateExample(s: Settings, rand: () => number): Example {
       ex = genTriple(rows, rand);
       break;
   }
-  return ex ?? fallback(rows);
+  return ex ?? fallback(rows, s.taskType);
 }
 
 export function generateSession(settings: Settings, seed: number): Example[] {
@@ -413,7 +488,7 @@ export const LEVELS: Level[] = [
       { id: "units", name: "Единицы 1-9", note: "Прямые ходы в единицах 1..9: без обмена через 5/10; например 4+5-8+1.", preset: { taskType: "movements", digits: 1, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "tens", name: "Десятки 10-90", note: "Та же логика прямых ходов, перенесённая на десятки.", preset: { taskType: "tens", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "double", name: "11-99", note: "Одинаковые двузначные числа по той же логике: 11/22/33/.../99.", preset: { taskType: "double", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
-      { id: "triple", name: "до 999", note: "Трёхзначные числа до 999 по тому же первому принципу.", preset: { taskType: "triple", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "triple", name: "до 999", note: "Трёхзначные числа до 999: поразрядные прямые ходы без переносов.", preset: { taskType: "triple", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "formula5", name: "Формулы на 5", note: "Отдельный блок формул на 5 по правилам и примерам методиста Mandarin.", preset: { taskType: "formula5", law5: "any", law10: "off", digits: 1, rows: 5, withFormula: true } },
       { id: "formula10", name: "Формулы на 10", note: "Отдельный блок формул на 10 по правилам и примерам методиста Mandarin.", preset: { taskType: "formula10", law5: "off", law10: "any", digits: 1, rows: 5, withFormula: true } },
     ],

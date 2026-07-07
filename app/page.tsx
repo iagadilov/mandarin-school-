@@ -2,9 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  FIVE_FORMULAS,
-  TEN_FORMULAS,
-  LEVELS,
   TASK_LABELS,
   estimateSeconds,
   findLesson,
@@ -22,12 +19,8 @@ const Icon = (children: React.ReactNode) => (
   </svg>
 );
 
-const IPlay = Icon(<path d="M5 3l14 9-14 9V3Z" />);
-const IBook = Icon(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" /></>);
-const IGrid = Icon(<><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>);
 const IArrow = Icon(<><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>);
 
-type View = "trainer" | "method";
 type Phase = "ready" | "countdown" | "showing" | "paused" | "answer" | "result" | "summary";
 
 const initialSettings: Settings = {
@@ -44,11 +37,6 @@ const initialSettings: Settings = {
   language: "kk",
   speak: false,
 };
-
-const viewItems = [
-  { id: "trainer" as View, label: "Тренажёр", icon: IPlay },
-  { id: "method" as View, label: "Методика", icon: IBook },
-];
 
 const taskOrder: TaskType[] = ["movements", "tens", "double", "triple", "formula5", "formula10"];
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
@@ -103,13 +91,16 @@ function settingsForTask(settings: Settings, taskType: TaskType): Settings {
   };
 }
 
-function SettingsPanel({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
+function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; setSettings: (s: Settings) => void; locked: boolean }) {
   const level = findLevel(settings.levelId);
   const lesson = findLesson(level, settings.lessonId);
   const est = formatDuration(estimateSeconds(settings));
+  const applySettings = (next: Settings) => {
+    if (!locked) setSettings(next);
+  };
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-4 sm:p-5">
+    <section className={`rounded-2xl border border-line bg-card p-4 transition sm:p-5 ${locked ? "opacity-70" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">Настройки</div>
@@ -125,7 +116,8 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
             {taskOrder.map((taskType) => (
               <button
                 key={taskType}
-                onClick={() => setSettings(settingsForTask(settings, taskType))}
+                onClick={() => applySettings(settingsForTask(settings, taskType))}
+                disabled={locked}
                 className={`rounded-xl border px-3 py-3 text-left text-[13px] font-extrabold ${settings.taskType === taskType ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}
               >
                 {TASK_LABELS[taskType]}
@@ -137,13 +129,13 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
 
         <label className="block">
           <span className="text-[12px] font-extrabold text-ink-faint">Количество чисел в примере: {settings.rows}</span>
-          <input type="range" min={2} max={10} value={settings.rows} onChange={(e) => setSettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
+          <input disabled={locked} type="range" min={2} max={10} value={settings.rows} onChange={(e) => applySettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
           <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 2 до 10</span>
         </label>
 
         <label className="block">
           <span className="text-[12px] font-extrabold text-ink-faint">Количество примеров: {settings.examples}</span>
-          <input type="range" min={1} max={50} value={settings.examples} onChange={(e) => setSettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
+          <input disabled={locked} type="range" min={1} max={50} value={settings.examples} onChange={(e) => applySettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
           <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 1 до 50</span>
         </label>
 
@@ -152,7 +144,7 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
             <span className="text-[12px] font-extrabold text-ink-faint">Скорость показа</span>
             <b className="text-brand-dark">{settings.speed.toFixed(1)} с</b>
           </div>
-          <input type="range" min={0.1} max={5} step={0.1} value={settings.speed} onChange={(e) => setSettings({ ...settings, speed: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
+          <input disabled={locked} type="range" min={0.1} max={5} step={0.1} value={settings.speed} onChange={(e) => applySettings({ ...settings, speed: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
           <div className="mt-1 flex justify-between text-[10.5px] font-bold text-ink-faint">
             <span>0.1 с</span>
             <span>5 с</span>
@@ -160,14 +152,14 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
         </div>
 
         <div className="rounded-xl border border-line bg-bg p-3 text-[12px] font-bold text-ink-soft">
-          Ориентировочное время серии: <b className="text-ink">{est}</b>
+          {locked ? "Настройки можно менять перед стартом новой серии." : <>Ориентировочное время серии: <b className="text-ink">{est}</b></>}
         </div>
       </div>
     </section>
   );
 }
 
-function Trainer({ settings }: { settings: Settings }) {
+function Trainer({ settings, onLockedChange }: { settings: Settings; onLockedChange: (locked: boolean) => void }) {
   const [seed, setSeed] = useState(1);
   const session = useMemo<Example[]>(() => generateSession(settings, seed), [settings, seed]);
   const [phase, setPhase] = useState<Phase>("ready");
@@ -182,6 +174,11 @@ function Trainer({ settings }: { settings: Settings }) {
   const current = session[exampleIndex];
   const activeOperand = current?.operands[operandIndex] ?? 0;
   const progress = ((exampleIndex + (phase === "answer" || phase === "result" ? 1 : operandIndex / Math.max(1, current?.operands.length ?? 1))) / session.length) * 100;
+  const hasAnswer = input.trim().length > 0;
+
+  useEffect(() => {
+    onLockedChange(["countdown", "showing", "paused", "answer", "result"].includes(phase));
+  }, [phase, onLockedChange]);
 
   useEffect(() => {
     setPhase("ready");
@@ -229,6 +226,7 @@ function Trainer({ settings }: { settings: Settings }) {
 
   function check() {
     if (!current) return;
+    if (!input.trim()) return;
     const value = input.trim() === "" ? Number.NaN : Number(input);
     const ok = Number.isFinite(value) && value === current.answer;
     setCorrect((value) => value + (ok ? 1 : 0));
@@ -264,11 +262,11 @@ function Trainer({ settings }: { settings: Settings }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Badge tone="amber">{TASK_LABELS[settings.taskType]}</Badge>
           <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-extrabold">
-            Пример {Math.min(exampleIndex + 1, session.length)} из {session.length}
+            {phase === "summary" ? "Серия завершена" : `Пример ${Math.min(exampleIndex + 1, session.length)} из ${session.length}`}
           </span>
         </div>
 
-        <div className="mt-5 flex min-h-[420px] flex-col items-center justify-center text-center sm:min-h-[520px] 2xl:min-h-[470px]">
+        <div className="mt-5 flex min-h-[360px] flex-col items-center justify-center text-center sm:min-h-[420px] xl:min-h-[460px] 2xl:min-h-[500px]">
           {phase === "ready" && (
             <>
               <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-white/95 p-3 shadow-xl sm:h-28 sm:w-28 sm:rounded-[32px]">
@@ -294,8 +292,9 @@ function Trainer({ settings }: { settings: Settings }) {
           {phase === "answer" && (
             <div className="w-full max-w-md rounded-[28px] bg-white/95 p-5 text-ink shadow-xl">
               <div className="text-[12px] font-extrabold uppercase tracking-wide text-ink-faint">Введите ответ</div>
-              <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && check()} inputMode="numeric" className="mt-4 w-full rounded-2xl border border-line bg-bg px-5 py-4 text-center text-[38px] font-black outline-none focus:border-brand" />
-              <button onClick={check} className="brand-grad mt-4 w-full rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">Проверить</button>
+              <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && check()} inputMode="numeric" placeholder="0" className="mt-4 w-full rounded-2xl border-2 border-brand-soft bg-bg px-5 py-4 text-center text-[38px] font-black outline-none placeholder:text-ink-faint focus:border-brand" />
+              <button disabled={!hasAnswer} onClick={check} className="brand-grad mt-4 w-full rounded-xl px-5 py-3 text-[13px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45">Проверить</button>
+              {!hasAnswer && <div className="mt-2 text-[11px] font-bold text-ink-faint">Введите ответ, чтобы проверить пример.</div>}
             </div>
           )}
           {phase === "result" && current && (
@@ -344,176 +343,53 @@ function Trainer({ settings }: { settings: Settings }) {
           </div>
           <div className="mt-3 flex items-center justify-between text-[11px] font-extrabold text-white/80">
             <span>{settings.speed.toFixed(1)} с</span>
-            <span>{phase === "showing" ? "число по центру" : phase === "answer" ? "ввод ответа" : phase === "summary" ? "итог" : "без предпросмотра"}</span>
+            <span>{phase === "showing" ? "число по центру" : phase === "answer" ? "ввод ответа" : phase === "result" ? "пример раскрыт" : phase === "summary" ? "итог" : "без предпросмотра"}</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-        <button onClick={start} className="brand-grad rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">Начать</button>
-        <button onClick={() => phase === "showing" && setPhase("paused")} disabled={phase !== "showing"} className="rounded-xl border border-line bg-bg px-5 py-3 text-[13px] font-extrabold text-ink disabled:cursor-not-allowed disabled:opacity-45">Пауза</button>
-        <button onClick={newTraining} className="rounded-xl border border-line bg-card px-5 py-3 text-[13px] font-extrabold text-ink">Назад</button>
-      </div>
-    </section>
-  );
-}
-
-function FormulaTable({ title, note, formulas }: { title: string; note: string; formulas: typeof FIVE_FORMULAS }) {
-  return (
-    <section className="rounded-2xl border border-line bg-card p-5">
-      <Badge tone="brand">{title}</Badge>
-      <p className="mt-3 text-[12.5px] leading-relaxed text-ink-soft">{note}</p>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {formulas.map((formula) => (
-          <div key={formula.delta} className="rounded-xl border border-line bg-bg p-3 text-center">
-            <div className="text-[18px] font-black text-brand-dark">{formula.label}</div>
-            <div className="mt-1 text-[11px] font-bold text-ink-faint">{formula.mechanic}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function MethodologyView({ settings }: { settings: Settings }) {
-  const level = findLevel(settings.levelId);
-  const lesson = findLesson(level, settings.lessonId);
-  const formulaText = settings.taskType === "formula5" ? "формулы на 5" : settings.taskType === "formula10" ? "формулы на 10" : "без формул";
-  const breadcrumb: Array<[string, string]> = [
-    ["Этап", level.name],
-    ["Блок", lesson.name],
-    ["Тип задания", TASK_LABELS[settings.taskType]],
-    ["Методика", formulaText],
-    ["Чисел в примере", `${settings.rows}`],
-    ["Количество примеров", `${settings.examples}`],
-    ["Скорость", `${settings.speed.toFixed(1)} с`],
-    ["Ориентировочное время", formatDuration(estimateSeconds(settings))],
-  ];
-
-  return (
-    <div className="space-y-4">
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <Badge tone="green">Методика Mandarin</Badge>
-        <h2 className="mt-3 text-[24px] font-black">Что сейчас выбрано в тренажёре</h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">Каждый пример проверяется математически и методически: следующий шаг должен быть допустимым ходом для выбранного блока.</p>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {breadcrumb.map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-line bg-bg p-4">
-              <div className="text-[11px] font-bold text-ink-faint">{label}</div>
-              <div className="mt-1 text-[15px] font-black text-ink">{value}</div>
-            </div>
-          ))}
+      {phase === "showing" && (
+        <div className="mt-4">
+          <button onClick={() => setPhase("paused")} className="w-full rounded-xl border border-line bg-bg px-5 py-3 text-[13px] font-extrabold text-ink">Пауза</button>
         </div>
-      </section>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <FormulaTable title="Формулы на 5" note="Переход через пятёрку внутри разряда. Метка - что видит ученик; механика - ход на абакусе." formulas={FIVE_FORMULAS} />
-        <FormulaTable title="Формулы на 10" note="Переход через десяток с переносом в следующий разряд. Конкретные правила уточняются по примерам методиста." formulas={TEN_FORMULAS} />
-      </div>
-
-      <section className="rounded-2xl border border-line bg-card p-5">
-        <Badge tone="brand">Скоуп 1 этапа</Badge>
-        <h2 className="mt-3 text-[22px] font-black">Базовый онлайн-тренажёр</h2>
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          {[
-            ["Входит", "числа по одному, ввод ответа, автоматическая проверка, 2-10 рядов, 1-50 примеров, скорость 5.0-0.1с, блоки 1-9 / 10-90 / 11-99 / до 999 / формулы на 5 / формулы на 10."],
-            ["Не входит", "кабинеты учеников и педагогов, база учеников, расписание, отчёты, домашние задания, оплаты, интеграции, мобильное приложение, умножение и деление."],
-            ["Методический принцип", "для блоков без формул генератор берёт только прямые ходы. Для формул отдельные блоки собираются по разрешённым правилам на 5 или на 10."],
-            ["Передача", "после сдачи передаётся исходный код и доступы к результату; база данных в первом этапе не используется."],
-          ].map(([title, text]) => (
-            <div key={title} className="rounded-2xl border border-line bg-bg p-4">
-              <b className="text-[14px]">{title}</b>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-ink-soft">{text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Sidebar({ view, setView }: { view: View; setView: (view: View) => void }) {
-  return (
-    <aside className="hidden w-[250px] flex-shrink-0 border-r border-line bg-card px-4 py-5 min-[1760px]:flex min-[1760px]:flex-col">
-      <Logo />
-      <nav className="mt-8 space-y-1">
-        {viewItems.map((item) => (
-          <button key={item.id} onClick={() => setView(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-bold transition ${view === item.id ? "bg-brand-soft text-brand-dark" : "text-ink-soft hover:bg-bg"}`}>
-            <MiniIcon>{item.icon}</MiniIcon>
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="mt-auto rounded-xl border border-line bg-bg p-3">
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">1 этап</div>
-        <p className="mt-2 text-[12px] leading-relaxed text-ink-soft">Только базовый тренажёр сложения и вычитания по методике Mandarin.</p>
-      </div>
-    </aside>
+      )}
+    </section>
   );
 }
 
 function TrainerView({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
+  const [locked, setLocked] = useState(false);
+
   return (
-    <div className="grid gap-4 min-[1760px]:grid-cols-[minmax(0,1fr)_430px]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
       <div className="space-y-4">
-        <Trainer settings={settings} />
+        <Trainer settings={settings} onLockedChange={setLocked} />
       </div>
-      <div>
-        <SettingsPanel settings={settings} setSettings={setSettings} />
+      <div className="xl:sticky xl:top-[92px] xl:self-start">
+        <SettingsPanel settings={settings} setSettings={setSettings} locked={locked} />
       </div>
     </div>
   );
 }
 
 export default function Page() {
-  const [view, setView] = useState<View>("trainer");
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [settings, setSettings] = useState<Settings>(initialSettings);
-  const title = viewItems.find((item) => item.id === view)?.label ?? "Тренажёр";
 
   return (
     <main className="min-h-screen bg-bg text-ink">
       <div className="mx-auto flex min-h-screen w-full max-w-[1680px] border-x border-line bg-bg">
-        <Sidebar view={view} setView={(value) => { setView(value); setMobileNavOpen(false); }} />
         <section className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 border-b border-line bg-card/95 px-4 py-3 backdrop-blur sm:px-6">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-[1760px]:hidden"><Logo /></div>
-                <div className="hidden min-[1760px]:block">
-                  <h1 className="text-[20px] font-black tracking-tight">{title}</h1>
-                  <p className="mt-1 text-[12px] text-ink-soft">первый этап Mandarin</p>
-                </div>
-                <button onClick={() => setMobileNavOpen((value) => !value)} className="rounded-xl border border-line p-2 text-ink-soft min-[1760px]:hidden" aria-label="Меню">
-                  <MiniIcon>{IGrid}</MiniIcon>
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-bg p-1">
-                {viewItems.map((item) => (
-                  <button key={item.id} onClick={() => setView(item.id)} className={`rounded-lg px-3 py-2 text-[12px] font-extrabold transition ${view === item.id ? "brand-grad text-white shadow-sm" : "text-ink-soft"}`}>
-                    {item.label}
-                  </button>
-                ))}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Logo />
+              <div className="text-left sm:text-right">
+                <h1 className="text-[18px] font-black tracking-tight">Тренажёр</h1>
+                <p className="mt-1 text-[12px] text-ink-soft">числа по одному, без предпросмотра</p>
               </div>
             </div>
-            <div className="mt-3 min-[1760px]:hidden">
-              <h1 className="text-[18px] font-black tracking-tight">{title}</h1>
-              <p className="mt-1 text-[12px] text-ink-soft">числа по одному, без предпросмотра</p>
-            </div>
-            {mobileNavOpen && (
-              <div className="mt-3 grid grid-cols-1 gap-2 rounded-2xl border border-line bg-bg p-2 min-[1760px]:hidden">
-                {viewItems.map((item) => (
-                  <button key={item.id} onClick={() => { setView(item.id); setMobileNavOpen(false); }} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-bold ${view === item.id ? "bg-brand-soft text-brand-dark" : "text-ink-soft"}`}>
-                    <MiniIcon>{item.icon}</MiniIcon>
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            )}
           </header>
           <div className="p-4 sm:p-6">
-            {view === "trainer" && <TrainerView settings={settings} setSettings={setSettings} />}
-            {view === "method" && <MethodologyView settings={settings} />}
+            <TrainerView settings={settings} setSettings={setSettings} />
           </div>
         </section>
       </div>
