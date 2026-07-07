@@ -11,7 +11,7 @@ export type Language = "ru" | "kk";
 //  number[]  - выбранные конкретные формулы (одна или несколько)
 export type LawSel = "any" | "off" | number[];
 
-export type TaskType = "laws" | "movements" | "tens" | "double" | "triple";
+export type TaskType = "movements" | "tens" | "double" | "triple" | "formula5" | "formula10";
 
 export type Settings = {
   levelId: string;
@@ -23,7 +23,7 @@ export type Settings = {
   rows: number; // чисел в примере (рядов), 2..10
   examples: number; // примеров в серии, 1..50
   speed: number; // секунд на число, 5..0.1
-  withFormula: boolean; // для десятки/двузначные: без формул или с формулами (по требованию Перизат)
+  withFormula: boolean; // legacy field kept for stable settings hashing; visible UI uses separate formula blocks
   language: Language;
   speak: boolean;
 };
@@ -79,7 +79,8 @@ export const TASK_LABELS: Record<TaskType, string> = {
   tens: "Десятки без формул",
   double: "Одинаковые двузначные",
   triple: "Трёхзначные до 999",
-  laws: "Формулы 5/10",
+  formula5: "Формулы на 5",
+  formula10: "Формулы на 10",
 };
 
 // ---------------------------------------------------------------------------
@@ -308,21 +309,6 @@ function genMovements(digits: number, rows: number, rand: () => number): Example
   return null;
 }
 
-// Десятки С ФОРМУЛАМИ: законы работают в разряде десятков (последовательность
-// законов по единичному разряду, умноженная на 10). Так 30+80 требует закон на 10
-// в десятках (перенос в сотни), 30+40 - закон на 5 в десятках.
-function genTensFormula(law5: LawSel, law10: LawSel, rows: number, rand: () => number): Example | null {
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const seq = genUnitsSequence(law5, law10, rows, rand);
-    if (!seq) continue;
-    const operands = seq.deltas.map((d) => d * 10);
-    const steps: Step[] = seq.steps.map((s) => ({ delta: s.delta * 10, kind: s.kind, running: s.running * 10 }));
-    const total = operands.reduce((a, b) => a + b, 0);
-    return finalize(operands, steps, total);
-  }
-  return null;
-}
-
 function scaleExample(ex: Example, factor: number): Example {
   const operands = ex.operands.map((n) => n * factor);
   const steps = ex.steps.map((s) => ({ ...s, delta: s.delta * factor, running: s.running * factor }));
@@ -365,19 +351,20 @@ export function generateExample(s: Settings, rand: () => number): Example {
   const digits = Math.max(1, Math.min(4, s.digits));
   let ex: Example | null = null;
   switch (s.taskType) {
-    case "laws":
-      ex = genLaws(s.law5, s.law10, digits, rows, rand);
+    case "formula5":
+      ex = genLaws("any", "off", 1, rows, rand);
+      break;
+    case "formula10":
+      ex = genLaws("off", "any", 1, rows, rand);
       break;
     case "movements":
       ex = genMovements(digits, rows, rand);
       break;
     case "tens":
-      // с формулами - законы в разряде десятков; без формул - 10+30+50
-      ex = s.withFormula ? genTensFormula(s.law5, s.law10, rows, rand) : genTens(rows, rand);
+      ex = genTens(rows, rand);
       break;
     case "double":
-      // с формулами - двузначные с законами (единичный разряд по методике); без формул - 11+55+22
-      ex = s.withFormula ? genLaws(s.law5, s.law10, 2, rows, rand) : genDouble(rows, rand);
+      ex = genDouble(rows, rand);
       break;
     case "triple":
       ex = genTriple(rows, rand);
@@ -427,7 +414,8 @@ export const LEVELS: Level[] = [
       { id: "tens", name: "Десятки 10-90", note: "Та же логика прямых ходов, перенесённая на десятки.", preset: { taskType: "tens", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "double", name: "11-99", note: "Одинаковые двузначные числа по той же логике: 11/22/33/.../99.", preset: { taskType: "double", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "triple", name: "до 999", note: "Трёхзначные числа до 999 по тому же первому принципу.", preset: { taskType: "triple", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
-      { id: "formulas", name: "Формулы 5/10", note: "Формулы подключаются по правилам и примерам методиста Mandarin.", preset: { taskType: "laws", law5: "any", law10: "any", digits: 1, rows: 5, withFormula: true } },
+      { id: "formula5", name: "Формулы на 5", note: "Отдельный блок формул на 5 по правилам и примерам методиста Mandarin.", preset: { taskType: "formula5", law5: "any", law10: "off", digits: 1, rows: 5, withFormula: true } },
+      { id: "formula10", name: "Формулы на 10", note: "Отдельный блок формул на 10 по правилам и примерам методиста Mandarin.", preset: { taskType: "formula10", law5: "off", law10: "any", digits: 1, rows: 5, withFormula: true } },
     ],
   },
 ];

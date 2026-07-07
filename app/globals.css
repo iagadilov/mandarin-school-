@@ -67,27 +67,3 @@ button {
 .mandarin-ring {
   background-image: linear-gradient(135deg, #d00000, #f6a313 70%, #54a94d);
 }
-
-.confetti-piece {
-  position: absolute;
-  top: -18px;
-  width: 10px;
-  height: 16px;
-  border-radius: 999px;
-  opacity: 0;
-  animation: confetti-fall 980ms ease-out forwards;
-}
-
-@keyframes confetti-fall {
-  0% {
-    opacity: 0;
-    transform: translateY(-20px) rotate(0deg);
-  }
-  15% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(360px) rotate(260deg);
-  }
-}
