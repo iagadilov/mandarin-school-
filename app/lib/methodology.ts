@@ -1,17 +1,7 @@
-// Mandarin mental-arithmetic methodology engine.
+// Mandarin Stage 1 methodology engine.
 //
-// Собрано под ЭТАЛОН клиента (t.mentalnaya-arifmetika.club) и его голосовые ТЗ:
-// генерация примеров ПО ФОРМУЛАМ (соробан: "маленькие друзья" = законы на 5,
-// "большие друзья" = законы на 10), а не рандом-калькулятор. Ядро - симулятор
-// одного разряда абакуса (косточки 0..9 + перенос): операнд выдаётся только когда
-// состояние косточек реально требует выбранную формулу.
-//
-// Структура настроек повторяет эталон:
-//   Тип задания: Законы (на 5 И на 10 одновременно) | Отработка движений | Десятки | Двузначные
-//   Для законов - ДВА независимых селектора: закон на 5 и закон на 10
-//   (каждый: Любой / конкретная формула / Без).
-//   Плюс: разрядность чисел (1..4), количество чисел в примере (ряды 2..10),
-//   количество примеров (1..50), скорость (5с..0.1с).
+// The core rule is not only mathematical correctness. Every next operand must
+// also be valid as an abacus move for the selected methodology block.
 
 export type Language = "ru" | "kk";
 
@@ -21,7 +11,7 @@ export type Language = "ru" | "kk";
 //  number[]  - выбранные конкретные формулы (одна или несколько)
 export type LawSel = "any" | "off" | number[];
 
-export type TaskType = "laws" | "movements" | "tens" | "double";
+export type TaskType = "laws" | "movements" | "tens" | "double" | "triple";
 
 export type Settings = {
   levelId: string;
@@ -85,10 +75,11 @@ export const TEN_FORMULAS: Formula[] = [
 ];
 
 export const TASK_LABELS: Record<TaskType, string> = {
-  laws: "Законы (Братья / Друзья)",
-  movements: "Отработка движений",
-  tens: "Десятки (10+30+50)",
-  double: "Одинаковые двузначные (11+55+22)",
+  movements: "Единицы без формул",
+  tens: "Десятки без формул",
+  double: "Одинаковые двузначные",
+  triple: "Трёхзначные до 999",
+  laws: "Формулы 5/10",
 };
 
 // ---------------------------------------------------------------------------
@@ -350,6 +341,13 @@ function genDouble(rows: number, rand: () => number): Example | null {
   return base ? scaleExample(base, 11) : null;
 }
 
+// Трёхзначные до 999 по тому же первому принципу: 111/222/.../999 как x111
+// от подтверждённой логики прямых ходов 1..9.
+function genTriple(rows: number, rand: () => number): Example | null {
+  const base = genMovements(1, rows, rand);
+  return base ? scaleExample(base, 111) : null;
+}
+
 function fallback(rows: number): Example {
   const pattern = [4, 5, -8, 1, 7, -5, 3, -4, 6, -9];
   const operands = Array.from({ length: rows }, (_, i) => pattern[i % pattern.length]);
@@ -381,6 +379,9 @@ export function generateExample(s: Settings, rand: () => number): Example {
       // с формулами - двузначные с законами (единичный разряд по методике); без формул - 11+55+22
       ex = s.withFormula ? genLaws(s.law5, s.law10, 2, rows, rand) : genDouble(rows, rand);
       break;
+    case "triple":
+      ex = genTriple(rows, rand);
+      break;
   }
   return ex ?? fallback(rows);
 }
@@ -408,63 +409,25 @@ export function formatDuration(sec: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Дерево методики: уровень -> урок. Пресеты настроек под уроки уровня 1
-// (по полученным книгам). Старшие уровни - каркас под методиста центра.
+// Stage 1 blocks. Methodist examples are the source of truth for formulas.
 // ---------------------------------------------------------------------------
 
 export type LessonPreset = Partial<Pick<Settings, "taskType" | "law5" | "law10" | "digits" | "rows" | "withFormula">>;
 export type Lesson = { id: string; name: string; note: string; preset: LessonPreset };
 export type Level = { id: string; name: string; book: string; ready: boolean; lessons: Lesson[] };
 
-// Структура выведена из анализа книг клиента (Kids/Junior/Teen 1-7):
-// разрядность и операции по факту растут Kids -> Teen7, умножение/деление
-// появляются с Teen 4. Порядок законов - стандартная прогрессия соробана
-// (движения -> братья -> друзья -> товарищи), точную привязку к урокам
-// подтверждает методист центра.
 export const LEVELS: Level[] = [
   {
-    id: "1",
-    name: "1 деңгей",
-    book: "Kids / Kids2 / Junior-1 / Teen 1",
+    id: "stage-1",
+    name: "1 этап",
+    book: "Базовый онлайн-тренажёр",
     ready: true,
     lessons: [
-      { id: "1-1", name: "Kids: единицы без формул", note: "Прямые ходы в единицах 1..9: без обмена через 5/10; например 4+5-8+1.", preset: { taskType: "movements", digits: 1, rows: 4 } },
-      { id: "1-2", name: "Kids: законы на 5", note: "Законы на 5 (братья): +1..+4 и -1..-4.", preset: { taskType: "laws", law5: "any", law10: "off", digits: 1, rows: 4 } },
-      { id: "1-3", name: "Junior: законы на 10", note: "Законы на 10 (друзья): +1..+9.", preset: { taskType: "laws", law5: "off", law10: "any", digits: 1, rows: 5 } },
-      { id: "1-4", name: "Teen 1: товарищи", note: "Братья и друзья вместе (товарищи).", preset: { taskType: "laws", law5: "any", law10: "any", digits: 1, rows: 6 } },
-      { id: "1-5", name: "Teen 1: десятки/двузначные", note: "Десятки и одинаковые двузначные строятся от той же логики прямых ходов 1..9.", preset: { taskType: "tens", digits: 2, rows: 4, withFormula: false } },
-    ],
-  },
-  {
-    id: "2",
-    name: "2 деңгей",
-    book: "Teen 2",
-    ready: true,
-    lessons: [
-      { id: "2-1", name: "Урок 1", note: "Все законы вместе, разрядность 2 (по книге Teen 2).", preset: { taskType: "laws", law5: "any", law10: "any", digits: 2, rows: 6 } },
-      { id: "2-2", name: "Урок 2", note: "Разрядность 3, законы в старших разрядах.", preset: { taskType: "laws", law5: "any", law10: "any", digits: 3, rows: 6 } },
-      { id: "2-3", name: "Урок 3", note: "Десятки с формулами (законы в разряде десятков).", preset: { taskType: "tens", digits: 2, rows: 5, withFormula: true, law5: "any", law10: "any" } },
-    ],
-  },
-  {
-    id: "3",
-    name: "3 деңгей",
-    book: "Teen 3",
-    ready: true,
-    lessons: [
-      { id: "3-1", name: "Урок 1", note: "Разрядность 3, все законы (по книге Teen 3).", preset: { taskType: "laws", law5: "any", law10: "any", digits: 3, rows: 7 } },
-      { id: "3-2", name: "Урок 2", note: "Двузначные с формулами, разрядность 2.", preset: { taskType: "double", digits: 2, rows: 5, withFormula: true, law5: "any", law10: "any" } },
-    ],
-  },
-  {
-    id: "teen",
-    name: "Teen 4-7",
-    book: "Teen 4 / 5 / 6 / 7",
-    ready: false,
-    lessons: [
-      { id: "teen-1", name: "Teen 4", note: "Разрядность 3. С Teen 4 в книгах вводятся умножение и деление (в тренажёре 1 этапа - сложение/вычитание).", preset: { taskType: "laws", law5: "any", law10: "any", digits: 3, rows: 8 } },
-      { id: "teen-2", name: "Teen 5-6", note: "Разрядность 4, умножение и деление (модуль умножения/деления - следующий этап).", preset: { taskType: "laws", law5: "any", law10: "any", digits: 4, rows: 8 } },
-      { id: "teen-3", name: "Teen 7", note: "Разрядность 3-4, скоростной счёт, умножение/деление.", preset: { taskType: "laws", law5: "any", law10: "any", digits: 4, rows: 9 } },
+      { id: "units", name: "Единицы 1-9", note: "Прямые ходы в единицах 1..9: без обмена через 5/10; например 4+5-8+1.", preset: { taskType: "movements", digits: 1, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "tens", name: "Десятки 10-90", note: "Та же логика прямых ходов, перенесённая на десятки.", preset: { taskType: "tens", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "double", name: "11-99", note: "Одинаковые двузначные числа по той же логике: 11/22/33/.../99.", preset: { taskType: "double", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "triple", name: "до 999", note: "Трёхзначные числа до 999 по тому же первому принципу.", preset: { taskType: "triple", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "formulas", name: "Формулы 5/10", note: "Формулы подключаются по правилам и примерам методиста Mandarin.", preset: { taskType: "laws", law5: "any", law10: "any", digits: 1, rows: 5, withFormula: true } },
     ],
   },
 ];

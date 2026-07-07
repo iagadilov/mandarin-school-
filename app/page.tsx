@@ -32,8 +32,8 @@ const IGrid = Icon(<><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14
 const ICheck = Icon(<path d="m20 6-11 11-5-5" />);
 const IArrow = Icon(<><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>);
 
-type View = "trainer" | "abacus" | "stats" | "profile" | "method";
-type Phase = "ready" | "countdown" | "showing" | "answer" | "result";
+type View = "trainer" | "method";
+type Phase = "ready" | "countdown" | "showing" | "answer" | "result" | "summary";
 
 type Attempt = {
   ts: string;
@@ -50,8 +50,8 @@ type Attempt = {
 const STORAGE_KEY = "mandarin-trainer-attempts-v4";
 
 const initialSettings: Settings = {
-  levelId: "1",
-  lessonId: "1-1",
+  levelId: "stage-1",
+  lessonId: "units",
   taskType: "movements",
   law5: "off",
   law10: "off",
@@ -216,7 +216,7 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
     setSettings({ ...settings, lessonId: id, ...ls.preset });
   }
 
-  const tasks: TaskType[] = ["laws", "movements", "tens", "double"];
+  const tasks: TaskType[] = ["movements", "tens", "double", "triple", "laws"];
 
   return (
     <section className="rounded-2xl border border-line bg-card p-5">
@@ -229,10 +229,10 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
       </div>
 
       <div className="mt-5 space-y-5">
-        {/* Уровень / урок (методика Mandarin поверх эталона) */}
+        {/* Блоки первого этапа */}
         <div>
-          <div className="text-[12px] font-extrabold text-ink-faint">Уровень методики</div>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="text-[12px] font-extrabold text-ink-faint">Блок методики</div>
+          <div className="mt-2 grid grid-cols-1 gap-2">
             {LEVELS.map((lv) => (
               <button
                 key={lv.id}
@@ -307,18 +307,19 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
 
         {/* Разрядность и количество чисел */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
+          <div className={settings.taskType === "laws" ? "" : "opacity-60"}>
             <div className="flex items-center justify-between">
               <span className="text-[12px] font-extrabold text-ink-faint">Разрядность чисел</span>
-              <b className="text-brand-dark">{settings.digits}</b>
+              <b className="text-brand-dark">{settings.taskType === "triple" ? 3 : settings.taskType === "double" || settings.taskType === "tens" ? 2 : settings.digits}</b>
             </div>
             <div className="mt-2 grid grid-cols-4 gap-2">
               {[1, 2, 3, 4].map((d) => (
-                <button key={d} onClick={() => setSettings({ ...settings, digits: d })} className={`rounded-xl border px-3 py-3 text-[13px] font-extrabold ${settings.digits === d ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}>
+                <button key={d} disabled={settings.taskType !== "laws"} onClick={() => setSettings({ ...settings, digits: d })} className={`rounded-xl border px-3 py-3 text-[13px] font-extrabold disabled:cursor-not-allowed ${settings.digits === d ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}>
                   {d}
                 </button>
               ))}
             </div>
+            {settings.taskType !== "laws" && <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">фиксируется выбранным блоком</span>}
           </div>
           <label className="block">
             <span className="text-[12px] font-extrabold text-ink-faint">Количество чисел в примере: {settings.rows}</span>
@@ -480,7 +481,10 @@ function Trainer({ settings, onSaved }: { settings: Settings; onSaved: () => voi
   }
 
   function next() {
-    if (exampleIndex >= session.length - 1) return;
+    if (exampleIndex >= session.length - 1) {
+      setPhase("summary");
+      return;
+    }
     setExampleIndex((v) => v + 1);
     setOperandIndex(0);
     setInput("");
@@ -518,7 +522,7 @@ function Trainer({ settings, onSaved }: { settings: Settings; onSaved: () => voi
           )}
           {phase === "countdown" && <div className="text-[90px] font-black sm:text-[140px]">{countdown || "Go"}</div>}
           {phase === "showing" && (
-            <div className="rounded-[38px] bg-white/95 px-12 py-10 text-[64px] font-black tracking-tight text-brand-dark shadow-xl sm:px-20 sm:py-14 sm:text-[110px]">
+            <div className="rounded-[34px] bg-white/96 px-12 py-10 text-[72px] font-black tracking-tight text-brand-dark shadow-xl sm:px-20 sm:py-14 sm:text-[128px]">
               {operandIndex === 0 ? activeOperand : signed(activeOperand)}
             </div>
           )}
@@ -536,25 +540,29 @@ function Trainer({ settings, onSaved }: { settings: Settings; onSaved: () => voi
                 <Metric label="Ваш ответ" value={input || "-"} tone="ink" />
                 <Metric label="Правильно" value={`${current.answer}`} tone={lastOk ? "green" : "brand"} />
               </div>
-              <div className="mt-4 rounded-2xl border border-line bg-bg p-3 text-left">
-                <div className="text-[10.5px] font-extrabold uppercase tracking-wide text-ink-faint">Пример</div>
-                <div className="mt-1 text-[14px] font-black text-ink">
-                  {current.operands.map((o, i) => (i === 0 ? `${o}` : ` ${signed(o)}`)).join("")} = {current.answer}
-                </div>
-                {(current.fiveHits > 0 || current.tenHits > 0) && (
-                  <div className="mt-1 text-[11px] font-bold text-ink-faint">
-                    {current.fiveHits > 0 && <span>законов на 5: {current.fiveHits} </span>}
-                    {current.tenHits > 0 && <span>законов на 10: {current.tenHits}</span>}
-                  </div>
-                )}
-              </div>
               {exampleIndex < session.length - 1 ? (
                 <button onClick={next} className="brand-grad mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">
                   Следующий пример <MiniIcon>{IArrow}</MiniIcon>
                 </button>
               ) : (
-                <button onClick={start} className="brand-grad mt-4 w-full rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">Повторить серию</button>
+                <button onClick={next} className="brand-grad mt-4 w-full rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">Итог серии</button>
               )}
+            </div>
+          )}
+          {phase === "summary" && (
+            <div className="w-full max-w-lg rounded-[28px] bg-white/95 p-5 text-ink shadow-xl">
+              <div className="text-[12px] font-extrabold uppercase tracking-wide text-ink-faint">Итог тренировки</div>
+              <h2 className="mt-2 text-[30px] font-black text-brand-dark">{correct} из {session.length}</h2>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Metric label="Примеров" value={`${session.length}`} tone="ink" />
+                <Metric label="Верно" value={`${correct}`} tone="green" />
+                <Metric label="Ошибки" value={`${session.length - correct}`} tone={session.length - correct ? "brand" : "ink"} />
+                <Metric label="Процент" value={`${Math.round((correct / session.length) * 100)}%`} />
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button onClick={start} className="brand-grad rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">Пройти ещё раз</button>
+                <button onClick={() => setPhase("ready")} className="rounded-xl border border-line bg-bg px-5 py-3 text-[13px] font-extrabold text-ink">Новая тренировка</button>
+              </div>
             </div>
           )}
         </div>
@@ -563,16 +571,9 @@ function Trainer({ settings, onSaved }: { settings: Settings; onSaved: () => voi
           <div className="h-2 overflow-hidden rounded-full bg-white/20">
             <i className="block h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {current?.operands.map((item, index) => {
-              const revealed = phase === "result";
-              const active = phase !== "ready" && index <= operandIndex;
-              return (
-                <span key={`${item}-${index}`} className={`flex h-8 min-w-8 items-center justify-center rounded-xl px-3 text-[13px] font-black ${active ? "bg-white text-brand-dark" : "bg-white/15 text-white/70"}`}>
-                  {revealed ? (index === 0 ? item : signed(item)) : ""}
-                </span>
-              );
-            })}
+          <div className="mt-3 flex items-center justify-between text-[11px] font-extrabold text-white/80">
+            <span>Пример {Math.min(exampleIndex + 1, session.length)} из {session.length}</span>
+            <span>{phase === "showing" ? "число по центру" : phase === "answer" ? "ввод ответа" : phase === "summary" ? "итог" : "без предпросмотра"}</span>
           </div>
         </div>
       </div>
@@ -779,7 +780,7 @@ function MethodologyView({ settings }: { settings: Settings }) {
       <section className="rounded-2xl border border-line bg-card p-5">
         <Badge tone="green">Методика Mandarin</Badge>
         <h2 className="mt-3 text-[24px] font-black">Что сейчас выбрано в тренажёре</h2>
-        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">Структура повторяет эталон клиента (t.mentalnaya-arifmetika.club), но под бренд Mandarin и с уровнями/уроками их методики. Каждый пример собирается по цепочке уровень - урок - тип задания - законы (на 5 и на 10) - разрядность/числа/скорость.</p>
+        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">В первом этапе каждый пример собирается не только математически, но и методически: следующий шаг должен быть допустимым движением на абакусе для выбранного блока.</p>
         <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           {breadcrumb.map(([label, value]) => (
             <div key={label} className="rounded-xl border border-line bg-bg p-4">
@@ -797,8 +798,8 @@ function MethodologyView({ settings }: { settings: Settings }) {
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <Badge tone="brand">Уровни и уроки</Badge>
-        <h2 className="mt-3 text-[22px] font-black">Структура из книг Mandarin</h2>
-        <p className="mt-2 text-[12.5px] leading-relaxed text-ink-soft">Уровни и разрядность выведены из анализа всех книг центра (Kids, Kids2, Junior-1, Teen 1-7). По книгам: 1-3 деңгей - сложение и вычитание с ростом разрядности (1 -&gt; 3), а с Teen 4 в книгах вводятся умножение и деление (модуль умножения/деления - следующий этап, в 1 этапе тренажёр на сложение/вычитание). Порядок законов - стандартная прогрессия соробана, точную привязку к урокам подтверждает методист центра.</p>
+        <h2 className="mt-3 text-[22px] font-black">Структура первого этапа</h2>
+        <p className="mt-2 text-[12.5px] leading-relaxed text-ink-soft">Сейчас фиксируется базовый онлайн-тренажёр сложения и вычитания: единицы 1-9, десятки 10-90, одинаковые двузначные 11-99, трёхзначные до 999 и формулы 5/10 по правилам методиста.</p>
         <div className="mt-5 space-y-3">
           {LEVELS.map((lv) => (
             <div key={lv.id} className="rounded-2xl border border-line bg-bg p-4">
@@ -824,7 +825,7 @@ function MethodologyView({ settings }: { settings: Settings }) {
         <div className="mt-4 space-y-3">
           {[
             ["Сейчас проверяем", "первый блок: единицы без формул. Прямые ходы 1-9 без обмена через 5/10, например 4+5-8+1; числа по одному, 2-10 рядов, до 50 примеров, пауза 5с-0.1с, проверка ответа, результат, эффект успеха."],
-            ["После подтверждения", "переносим эту же методическую точность на десятки, одинаковые двузначные, законы на 5/10, разрядность 1-4 и связку уроков по книгам."],
+            ["После подтверждения", "переносим эту же методическую точность на десятки, одинаковые двузначные, трёхзначные до 999 и законы на 5/10."],
             ["Нужно от клиента", "по каждому следующему режиму нужны такие же правила: что можно, что нельзя, 10 правильных и 10 неправильных примеров. Тогда тренажёр будет идти по реальной программе."],
             ["Следующие этапы", "профили учеников, кабинет педагога, база учеников, домашки, прогресс, отчёты родителям, умножение/деление."],
           ].map(([title, text]) => (
@@ -928,7 +929,7 @@ export default function Page() {
                   <MiniIcon>{IGrid}</MiniIcon>
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-1 rounded-xl border border-line bg-bg p-1 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-bg p-1">
                 {viewItems.map((item) => (
                   <button key={item.id} onClick={() => setView(item.id)} className={`rounded-lg px-3 py-2 text-[12px] font-extrabold transition ${view === item.id ? "brand-grad text-white shadow-sm" : "text-ink-soft"}`}>
                     {item.label}
@@ -954,9 +955,6 @@ export default function Page() {
           <div className="p-4 sm:p-6">
             {view === "trainer" && <TrainerView settings={settings} setSettings={setSettings} refreshStats={refreshStats} />}
             {view === "method" && <MethodologyView settings={settings} />}
-            {view === "abacus" && <AbacusGame />}
-            {view === "stats" && <StatsView attempts={attempts} refresh={refreshStats} />}
-            {view === "profile" && <ProfileView />}
           </div>
         </section>
       </div>
