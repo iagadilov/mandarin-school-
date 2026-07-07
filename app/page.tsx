@@ -52,6 +52,7 @@ const viewItems = [
 
 const taskOrder: TaskType[] = ["movements", "tens", "double", "triple", "formula5", "formula10"];
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+const formatOperand = (value: number, index: number) => (index === 0 ? String(value) : signed(value));
 
 function MiniIcon({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex h-4 w-4 flex-shrink-0 text-current">{children}</span>;
@@ -228,7 +229,8 @@ function Trainer({ settings }: { settings: Settings }) {
 
   function check() {
     if (!current) return;
-    const ok = Number(input) === current.answer;
+    const value = input.trim() === "" ? Number.NaN : Number(input);
+    const ok = Number.isFinite(value) && value === current.answer;
     setCorrect((value) => value + (ok ? 1 : 0));
     setLastOk(ok);
     setPhase("result");
@@ -302,6 +304,16 @@ function Trainer({ settings }: { settings: Settings }) {
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <Metric label="Ваш ответ" value={input || "-"} tone="ink" />
                 <Metric label="Правильный ответ" value={`${current.answer}`} tone={lastOk ? "green" : "brand"} />
+              </div>
+              <div className="mt-3 rounded-2xl border border-line bg-bg p-3 text-left">
+                <div className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">Пример</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {current.operands.map((operand, index) => (
+                    <span key={`${operand}-${index}`} className="rounded-xl border border-line bg-card px-3 py-1.5 text-[14px] font-black text-brand-dark">
+                      {formatOperand(operand, index)}
+                    </span>
+                  ))}
+                </div>
               </div>
               <button onClick={next} className="brand-grad mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[13px] font-extrabold text-white">
                 {exampleIndex < session.length - 1 ? "Следующий пример" : "Итог серии"} <MiniIcon>{IArrow}</MiniIcon>
