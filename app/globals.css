@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #fff8f1;
+  --card: #ffffff;
+  --ink: #231f20;
+  --ink-soft: #62564f;
+  --ink-faint: #9a8d84;
+  --brand: #e83b13;
+  --brand-dark: #a81908;
+  --brand-soft: #ffe0d1;
+  --brand-tint: #fff4ea;
+  --line: #eddccd;
+  --green: #54a94d;
+  --green-soft: #e8f6dd;
+  --amber: #f09a16;
+  --amber-soft: #fff0c9;
+  --red: #d00000;
+  --red-soft: #ffe1dc;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-tint: var(--brand-tint);
+  --color-line: var(--line);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-red: var(--red);
+  --color-red-soft: var(--red-soft);
+  --font-sans: var(--font-manrope);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+button {
+  cursor: pointer;
+}
+
+.brand-grad {
+  background-image: linear-gradient(135deg, #d00000 0%, #ef4d00 42%, #f6a313 100%);
+}
+
+.trainer-surface {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.28), transparent 22%),
+    linear-gradient(135deg, #d00000 0%, #ee4a00 44%, #f6a313 100%);
+}
+
+.mandarin-ring {
+  background-image: linear-gradient(135deg, #d00000, #f6a313 70%, #54a94d);
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -18px;
+  width: 10px;
+  height: 16px;
+  border-radius: 999px;
+  opacity: 0;
+  animation: confetti-fall 980ms ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(360px) rotate(260deg);
+  }
+}
