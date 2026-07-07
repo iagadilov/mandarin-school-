@@ -108,11 +108,11 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
   const est = formatDuration(estimateSeconds(settings));
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-5">
+    <section className="rounded-2xl border border-line bg-card p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">Настройки</div>
-          <h2 className="mt-2 text-[22px] font-black">Жаттығу параметрлері</h2>
+          <h2 className="mt-2 text-[20px] font-black leading-tight sm:text-[22px]">Жаттығу параметрлері</h2>
         </div>
         <Badge tone="brand">1 этап</Badge>
       </div>
@@ -120,7 +120,7 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
       <div className="mt-5 space-y-5">
         <div>
           <div className="text-[12px] font-extrabold text-ink-faint">Блок</div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 min-[520px]:grid-cols-2 2xl:grid-cols-1 min-[1720px]:grid-cols-2">
             {taskOrder.map((taskType) => (
               <button
                 key={taskType}
@@ -257,8 +257,8 @@ function Trainer({ settings }: { settings: Settings }) {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-4 sm:p-5">
-      <div className="trainer-surface relative overflow-hidden rounded-2xl p-5 text-white">
+    <section className="rounded-2xl border border-line bg-card p-3 sm:p-5">
+      <div className="trainer-surface relative overflow-hidden rounded-2xl p-4 text-white sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Badge tone="amber">{TASK_LABELS[settings.taskType]}</Badge>
           <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-extrabold">
@@ -266,20 +266,20 @@ function Trainer({ settings }: { settings: Settings }) {
           </span>
         </div>
 
-        <div className="mt-5 flex min-h-[270px] flex-col items-center justify-center text-center sm:min-h-[360px]">
+        <div className="mt-5 flex min-h-[330px] flex-col items-center justify-center text-center sm:min-h-[430px] 2xl:min-h-[360px]">
           {phase === "ready" && (
             <>
-              <div className="flex h-28 w-28 items-center justify-center rounded-[32px] bg-white/95 p-3 shadow-xl">
+              <div className="flex h-24 w-24 items-center justify-center rounded-[28px] bg-white/95 p-3 shadow-xl sm:h-28 sm:w-28 sm:rounded-[32px]">
                 <img src="/mandarin-logo.png" alt="Mandarin Edu Center" className="h-full w-full object-contain" />
               </div>
-              <div className="mt-5 text-[38px] font-black sm:text-[58px]">Mandarin</div>
+              <div className="mt-5 text-[36px] font-black sm:text-[58px]">Mandarin</div>
               <p className="mt-2 text-[18px] font-black text-white/90">Онлайн-тренажёр</p>
               <button onClick={start} className="mt-6 rounded-2xl bg-white px-8 py-4 text-[15px] font-black text-brand-dark shadow-xl">Начать тренировку</button>
             </>
           )}
           {phase === "countdown" && <div className="text-[90px] font-black sm:text-[140px]">{countdown || "Start"}</div>}
           {phase === "showing" && (
-            <div className="rounded-[34px] bg-white/96 px-12 py-10 text-[72px] font-black tracking-tight text-brand-dark shadow-xl sm:px-20 sm:py-14 sm:text-[128px]">
+            <div className="rounded-[30px] bg-white/96 px-10 py-9 text-[72px] font-black tracking-tight text-brand-dark shadow-xl sm:rounded-[34px] sm:px-20 sm:py-14 sm:text-[128px]">
               {operandIndex === 0 ? activeOperand : signed(activeOperand)}
             </div>
           )}
@@ -422,7 +422,7 @@ function MethodologyView({ settings }: { settings: Settings }) {
 
 function Sidebar({ view, setView }: { view: View; setView: (view: View) => void }) {
   return (
-    <aside className="hidden w-[250px] flex-shrink-0 border-r border-line bg-card px-4 py-5 lg:flex lg:flex-col">
+    <aside className="hidden w-[250px] flex-shrink-0 border-r border-line bg-card px-4 py-5 2xl:flex 2xl:flex-col">
       <Logo />
       <nav className="mt-8 space-y-1">
         {viewItems.map((item) => (
@@ -442,21 +442,21 @@ function Sidebar({ view, setView }: { view: View; setView: (view: View) => void 
 
 function TrainerView({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.25fr_.85fr]">
-      <div className="space-y-4">
-        <section className="rounded-2xl border border-line bg-card p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_420px] min-[1720px]:grid-cols-[minmax(0,1fr)_480px]">
+      <div className="order-2 space-y-4 2xl:order-1">
+        <section className="rounded-2xl border border-line bg-card p-4 sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex min-w-0 gap-4">
-              <div className="hidden h-24 w-24 flex-shrink-0 items-center justify-center rounded-[26px] border border-brand-soft bg-white p-2 shadow-sm sm:flex">
+              <div className="hidden h-20 w-20 flex-shrink-0 items-center justify-center rounded-[22px] border border-brand-soft bg-white p-2 shadow-sm sm:flex xl:h-24 xl:w-24 xl:rounded-[26px]">
                 <img src="/mandarin-logo.png" alt="Mandarin Edu Center" className="h-full w-full object-contain" />
               </div>
               <div className="min-w-0">
                 <Badge tone="brand">Mandarin.edu.center</Badge>
-                <h1 className="mt-3 text-[28px] font-black leading-tight sm:text-[38px]">Онлайн-тренажёр</h1>
+                <h1 className="mt-3 text-[26px] font-black leading-tight sm:text-[34px] xl:text-[38px]">Онлайн-тренажёр</h1>
                 <p className="mt-3 max-w-3xl text-[14px] leading-relaxed text-ink-soft">Ментальная арифметика: показ чисел по одному, ответ после последнего числа, автоматическая проверка.</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 lg:w-[360px]">
+            <div className="grid grid-cols-3 gap-2 xl:w-[360px]">
               <Metric label="ряды" value="2-10" tone="ink" />
               <Metric label="примеры" value="1-50" />
               <Metric label="скорость" value="0.1с" />
@@ -465,7 +465,9 @@ function TrainerView({ settings, setSettings }: { settings: Settings; setSetting
         </section>
         <Trainer settings={settings} />
       </div>
-      <SettingsPanel settings={settings} setSettings={setSettings} />
+      <div className="order-1 2xl:order-2">
+        <SettingsPanel settings={settings} setSettings={setSettings} />
+      </div>
     </div>
   );
 }
@@ -478,18 +480,18 @@ export default function Page() {
 
   return (
     <main className="min-h-screen bg-bg text-ink">
-      <div className="mx-auto flex min-h-screen max-w-[1440px] border-x border-line bg-bg">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1680px] border-x border-line bg-bg">
         <Sidebar view={view} setView={(value) => { setView(value); setMobileNavOpen(false); }} />
         <section className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 border-b border-line bg-card/95 px-4 py-3 backdrop-blur sm:px-6">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center justify-between gap-3">
-                <div className="lg:hidden"><Logo /></div>
-                <div className="hidden lg:block">
+                <div className="2xl:hidden"><Logo /></div>
+                <div className="hidden 2xl:block">
                   <h1 className="text-[20px] font-black tracking-tight">{title}</h1>
                   <p className="mt-1 text-[12px] text-ink-soft">первый этап Mandarin</p>
                 </div>
-                <button onClick={() => setMobileNavOpen((value) => !value)} className="rounded-xl border border-line p-2 text-ink-soft lg:hidden" aria-label="Меню">
+                <button onClick={() => setMobileNavOpen((value) => !value)} className="rounded-xl border border-line p-2 text-ink-soft 2xl:hidden" aria-label="Меню">
                   <MiniIcon>{IGrid}</MiniIcon>
                 </button>
               </div>
@@ -501,12 +503,12 @@ export default function Page() {
                 ))}
               </div>
             </div>
-            <div className="mt-3 lg:hidden">
+            <div className="mt-3 2xl:hidden">
               <h1 className="text-[18px] font-black tracking-tight">{title}</h1>
               <p className="mt-1 text-[12px] text-ink-soft">числа по одному, без предпросмотра</p>
             </div>
             {mobileNavOpen && (
-              <div className="mt-3 grid grid-cols-1 gap-2 rounded-2xl border border-line bg-bg p-2 lg:hidden">
+              <div className="mt-3 grid grid-cols-1 gap-2 rounded-2xl border border-line bg-bg p-2 2xl:hidden">
                 {viewItems.map((item) => (
                   <button key={item.id} onClick={() => { setView(item.id); setMobileNavOpen(false); }} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] font-bold ${view === item.id ? "bg-brand-soft text-brand-dark" : "text-ink-soft"}`}>
                     <MiniIcon>{item.icon}</MiniIcon>
