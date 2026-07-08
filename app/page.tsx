@@ -94,13 +94,12 @@ function settingsForTask(settings: Settings, taskType: TaskType): Settings {
   };
 }
 
-function PresetButton({ active, disabled, children, onClick }: { active: boolean; disabled: boolean; children: React.ReactNode; onClick: () => void }) {
+function PresetButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
-      disabled={disabled}
       onClick={onClick}
-      className={`min-h-10 rounded-xl border px-3 text-[12px] font-black transition disabled:cursor-not-allowed ${
+      className={`min-h-10 rounded-xl border px-3 text-[12px] font-black transition ${
         active ? "border-brand bg-brand text-white shadow-sm" : "border-line bg-bg text-ink-soft"
       }`}
     >
@@ -109,16 +108,16 @@ function PresetButton({ active, disabled, children, onClick }: { active: boolean
   );
 }
 
-function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; setSettings: (s: Settings) => void; locked: boolean }) {
+function SettingsPanel({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
   const level = findLevel(settings.levelId);
   const lesson = findLesson(level, settings.lessonId);
   const est = formatDuration(estimateSeconds(settings));
   const applySettings = (next: Settings) => {
-    if (!locked) setSettings(next);
+    setSettings(next);
   };
 
   return (
-    <section className={`rounded-2xl border border-line bg-card p-4 transition sm:p-5 ${locked ? "opacity-70" : ""}`}>
+    <section className="rounded-2xl border border-line bg-card p-4 transition sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">Настройки</div>
@@ -135,7 +134,6 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
               <button
                 key={taskType}
                 onClick={() => applySettings(settingsForTask(settings, taskType))}
-                disabled={locked}
                 className={`rounded-xl border px-3 py-3 text-left text-[13px] font-extrabold ${settings.taskType === taskType ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}
               >
                 {TASK_LABELS[taskType]}
@@ -149,12 +147,12 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
           <span className="text-[12px] font-extrabold text-ink-faint">Количество чисел в примере: {settings.rows}</span>
           <div className="mt-2 grid grid-cols-3 gap-2 min-[520px]:grid-cols-6 xl:grid-cols-3 2xl:grid-cols-6">
             {rowPresets.map((value) => (
-              <PresetButton key={value} active={settings.rows === value} disabled={locked} onClick={() => applySettings({ ...settings, rows: value })}>
+              <PresetButton key={value} active={settings.rows === value} onClick={() => applySettings({ ...settings, rows: value })}>
                 {value}
               </PresetButton>
             ))}
           </div>
-          <input disabled={locked} type="range" min={2} max={10} value={settings.rows} onChange={(e) => applySettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
+          <input type="range" min={2} max={10} value={settings.rows} onChange={(e) => applySettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
           <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 2 до 10</span>
         </label>
 
@@ -162,12 +160,12 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
           <span className="text-[12px] font-extrabold text-ink-faint">Количество примеров: {settings.examples}</span>
           <div className="mt-2 grid grid-cols-5 gap-2">
             {examplePresets.map((value) => (
-              <PresetButton key={value} active={settings.examples === value} disabled={locked} onClick={() => applySettings({ ...settings, examples: value })}>
+              <PresetButton key={value} active={settings.examples === value} onClick={() => applySettings({ ...settings, examples: value })}>
                 {value}
               </PresetButton>
             ))}
           </div>
-          <input disabled={locked} type="range" min={1} max={50} value={settings.examples} onChange={(e) => applySettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
+          <input type="range" min={1} max={50} value={settings.examples} onChange={(e) => applySettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
           <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 1 до 50</span>
         </label>
 
@@ -178,12 +176,12 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
           </div>
           <div className="mt-2 grid grid-cols-5 gap-2">
             {speedPresets.map((value) => (
-              <PresetButton key={value} active={settings.speed === value} disabled={locked} onClick={() => applySettings({ ...settings, speed: value })}>
+              <PresetButton key={value} active={settings.speed === value} onClick={() => applySettings({ ...settings, speed: value })}>
                 {value.toFixed(value < 1 ? 1 : 0)}с
               </PresetButton>
             ))}
           </div>
-          <input disabled={locked} type="range" min={0.1} max={5} step={0.1} value={settings.speed} onChange={(e) => applySettings({ ...settings, speed: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
+          <input type="range" min={0.1} max={5} step={0.1} value={settings.speed} onChange={(e) => applySettings({ ...settings, speed: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
           <div className="mt-1 flex justify-between text-[10.5px] font-bold text-ink-faint">
             <span>0.1 с</span>
             <span>5 с</span>
@@ -191,14 +189,14 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
         </div>
 
         <div className="rounded-xl border border-line bg-bg p-3 text-[12px] font-bold text-ink-soft">
-          {locked ? "Настройки можно менять перед стартом новой серии." : <>Ориентировочное время серии: <b className="text-ink">{est}</b></>}
+          Ориентировочное время серии: <b className="text-ink">{est}</b>
         </div>
       </div>
     </section>
   );
 }
 
-function Trainer({ settings, onLockedChange }: { settings: Settings; onLockedChange: (locked: boolean) => void }) {
+function Trainer({ settings }: { settings: Settings }) {
   const [seed, setSeed] = useState(1);
   const session = useMemo<Example[]>(() => generateSession(settings, seed), [settings, seed]);
   const [phase, setPhase] = useState<Phase>("ready");
@@ -214,10 +212,6 @@ function Trainer({ settings, onLockedChange }: { settings: Settings; onLockedCha
   const activeOperand = current?.operands[operandIndex] ?? 0;
   const progress = ((exampleIndex + (phase === "answer" || phase === "result" ? 1 : operandIndex / Math.max(1, current?.operands.length ?? 1))) / session.length) * 100;
   const hasAnswer = input.trim().length > 0;
-
-  useEffect(() => {
-    onLockedChange(["countdown", "showing", "paused", "answer", "result"].includes(phase));
-  }, [phase, onLockedChange]);
 
   useEffect(() => {
     setPhase("ready");
@@ -397,15 +391,13 @@ function Trainer({ settings, onLockedChange }: { settings: Settings; onLockedCha
 }
 
 function TrainerView({ settings, setSettings }: { settings: Settings; setSettings: (s: Settings) => void }) {
-  const [locked, setLocked] = useState(false);
-
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
       <div className="space-y-4">
-        <Trainer settings={settings} onLockedChange={setLocked} />
+        <Trainer settings={settings} />
       </div>
       <div className="xl:sticky xl:top-[92px] xl:self-start">
-        <SettingsPanel settings={settings} setSettings={setSettings} locked={locked} />
+        <SettingsPanel settings={settings} setSettings={setSettings} />
       </div>
     </div>
   );
