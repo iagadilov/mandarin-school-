@@ -39,6 +39,9 @@ const initialSettings: Settings = {
 };
 
 const taskOrder: TaskType[] = ["movements", "tens", "double", "triple", "formula5", "formula10"];
+const rowPresets = [2, 3, 4, 5, 6, 10];
+const examplePresets = [1, 10, 20, 30, 50];
+const speedPresets = [3, 2, 1, 0.5, 0.1];
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const formatOperand = (value: number, index: number) => (index === 0 ? String(value) : signed(value));
 
@@ -91,6 +94,21 @@ function settingsForTask(settings: Settings, taskType: TaskType): Settings {
   };
 }
 
+function PresetButton({ active, disabled, children, onClick }: { active: boolean; disabled: boolean; children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`min-h-10 rounded-xl border px-3 text-[12px] font-black transition disabled:cursor-not-allowed ${
+        active ? "border-brand bg-brand text-white shadow-sm" : "border-line bg-bg text-ink-soft"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; setSettings: (s: Settings) => void; locked: boolean }) {
   const level = findLevel(settings.levelId);
   const lesson = findLesson(level, settings.lessonId);
@@ -129,12 +147,26 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
 
         <label className="block">
           <span className="text-[12px] font-extrabold text-ink-faint">Количество чисел в примере: {settings.rows}</span>
+          <div className="mt-2 grid grid-cols-3 gap-2 min-[520px]:grid-cols-6 xl:grid-cols-3 2xl:grid-cols-6">
+            {rowPresets.map((value) => (
+              <PresetButton key={value} active={settings.rows === value} disabled={locked} onClick={() => applySettings({ ...settings, rows: value })}>
+                {value}
+              </PresetButton>
+            ))}
+          </div>
           <input disabled={locked} type="range" min={2} max={10} value={settings.rows} onChange={(e) => applySettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
           <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 2 до 10</span>
         </label>
 
         <label className="block">
           <span className="text-[12px] font-extrabold text-ink-faint">Количество примеров: {settings.examples}</span>
+          <div className="mt-2 grid grid-cols-5 gap-2">
+            {examplePresets.map((value) => (
+              <PresetButton key={value} active={settings.examples === value} disabled={locked} onClick={() => applySettings({ ...settings, examples: value })}>
+                {value}
+              </PresetButton>
+            ))}
+          </div>
           <input disabled={locked} type="range" min={1} max={50} value={settings.examples} onChange={(e) => applySettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
           <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 1 до 50</span>
         </label>
@@ -143,6 +175,13 @@ function SettingsPanel({ settings, setSettings, locked }: { settings: Settings; 
           <div className="flex items-center justify-between">
             <span className="text-[12px] font-extrabold text-ink-faint">Скорость показа</span>
             <b className="text-brand-dark">{settings.speed.toFixed(1)} с</b>
+          </div>
+          <div className="mt-2 grid grid-cols-5 gap-2">
+            {speedPresets.map((value) => (
+              <PresetButton key={value} active={settings.speed === value} disabled={locked} onClick={() => applySettings({ ...settings, speed: value })}>
+                {value.toFixed(value < 1 ? 1 : 0)}с
+              </PresetButton>
+            ))}
           </div>
           <input disabled={locked} type="range" min={0.1} max={5} step={0.1} value={settings.speed} onChange={(e) => applySettings({ ...settings, speed: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)] disabled:cursor-not-allowed" />
           <div className="mt-1 flex justify-between text-[10.5px] font-bold text-ink-faint">
