@@ -11,7 +11,19 @@ export type Language = "ru" | "kk";
 //  number[]  - выбранные конкретные формулы (одна или несколько)
 export type LawSel = "any" | "off" | number[];
 
-export type TaskType = "movements" | "tens" | "double" | "triple" | "formula5" | "formula10";
+export type TaskType =
+  | "movements"
+  | "tens"
+  | "double"
+  | "doubleMixed"
+  | "triple"
+  | "tripleSame"
+  | "formula5"
+  | "formula10"
+  | "doubleSameFormula5"
+  | "doubleMixedFormula5"
+  | "doubleMixedFormula10"
+  | "tripleSameFormula5";
 
 export type Settings = {
   levelId: string;
@@ -87,9 +99,15 @@ export const TASK_LABELS: Record<TaskType, string> = {
   movements: "Единицы без формул",
   tens: "Десятки без формул",
   double: "Одинаковые двузначные",
+  doubleMixed: "Разные двузначные",
   triple: "Трёхзначные до 999",
+  tripleSame: "Одинаковые 111-999",
   formula5: "Формулы на 5",
   formula10: "Формулы на 10",
+  doubleSameFormula5: "11-99 на 5",
+  doubleMixedFormula5: "Разные двузначные на 5",
+  doubleMixedFormula10: "Разные двузначные на 10",
+  tripleSameFormula5: "111-999 на 5",
 };
 
 // ---------------------------------------------------------------------------
@@ -340,9 +358,133 @@ function digitsToNumber(digits: number[]): number {
   return digits.reduce((sum, digit) => sum * 10 + digit, 0);
 }
 
+function numberToDigits(value: number, digits: number): number[] {
+  return String(Math.abs(value)).padStart(digits, "0").slice(-digits).split("").map(Number);
+}
+
 function isDirectDelta(current: number, delta: number): boolean {
   const info = classify(current, delta);
   return Boolean(info && info.kind === "direct" && info.carry === 0 && info.newU >= 0 && info.newU <= 9);
+}
+
+function hasDifferentDigits(value: number, digits: number): boolean {
+  const list = numberToDigits(value, digits);
+  return new Set(list).size > 1;
+}
+
+function isFullDigitNumber(value: number, digits: number): boolean {
+  return Math.abs(value) >= Math.pow(10, digits - 1);
+}
+
+function randomAbsDigits(digits: number, different: boolean, rand: () => number): number[] {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const list = Array.from({ length: digits }, (_, index) => (index === 0 ? 1 + Math.floor(rand() * 9) : Math.floor(rand() * 10)));
+    if (!different || new Set(list).size > 1) return list;
+  }
+  return digits === 2 ? [1, 2] : [1, 2, 3].slice(0, digits);
+}
+
+type DigitMode = "direct" | "five";
+
+// Разные двузначные и другие поразрядные блоки: каждая цифра проверяется
+// отдельно, без скрытого переноса между разрядами.
+function genByDigits(rows: number, digits: number, mode: DigitMode, different: boolean, rand: () => number): Example | null {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const current = randomAbsDigits(digits, different, rand);
+    const first = digitsToNumber(current);
+    const operands = [first];
+    const steps: Step[] = [{ delta: first, kind: "direct", running: first }];
+    let total = first;
+    let formulaHits = 0;
+    let ok = true;
+
+    for (let row = 1; row < rows; row++) {
+      const candidates: { operand: number; next: number[]; hit: boolean }[] = [];
+      for (const sign of [1, -1]) {
+        for (let sample = 0; sample < 80; sample++) {
+          const absDigits = randomAbsDigits(digits, different, rand);
+          let hit = false;
+          let valid = true;
+          const next = [...current];
+
+          for (let index = 0; index < digits; index++) {
+            const delta = sign * absDigits[index];
+            if (delta === 0) continue;
+            const info = classify(current[index], delta);
+            if (!info || info.carry !== 0) {
+              valid = false;
+              break;
+            }
+            if (mode === "direct" && info.kind !== "direct") {
+              valid = false;
+              break;
+            }
+            if (mode === "five" && info.kind === "ten") {
+              valid = false;
+              break;
+            }
+            if (info.kind === "five") hit = true;
+            next[index] = info.newU;
+          }
+
+          const operand = sign * digitsToNumber(absDigits);
+          if (valid && operand !== 0 && total + operand >= 0) {
+            candidates.push({ operand, next, hit });
+          }
+        }
+      }
+
+      const needFormula = mode === "five" && formulaHits === 0;
+      const formulaCandidates = candidates.filter((candidate) => candidate.hit);
+      const pool = needFormula && formulaCandidates.length ? formulaCandidates : candidates;
+      if (!pool.length) {
+        ok = false;
+        break;
+      }
+
+      const selected = pick(pool, rand);
+      operands.push(selected.operand);
+      total += selected.operand;
+      current.splice(0, current.length, ...selected.next);
+      if (selected.hit) formulaHits++;
+      steps.push({ delta: selected.operand, kind: selected.hit ? "five" : "direct", running: total });
+    }
+
+    if (ok && (mode === "direct" || formulaHits > 0)) return finalize(operands, steps, total);
+  }
+  return null;
+}
+
+function genDoubleMixed(rows: number, rand: () => number): Example | null {
+  return genByDigits(rows, 2, "direct", true, rand);
+}
+
+function genDoubleMixedFormula5(rows: number, rand: () => number): Example | null {
+  return genByDigits(rows, 2, "five", true, rand);
+}
+
+function genDoubleSameFormula5(rows: number, rand: () => number): Example | null {
+  const base = genLaws("any", "off", 1, rows, rand);
+  return base ? scaleExample(base, 11) : null;
+}
+
+function genTripleSame(rows: number, rand: () => number): Example | null {
+  const base = genMovements(1, rows, rand);
+  return base ? scaleExample(base, 111) : null;
+}
+
+function genTripleSameFormula5(rows: number, rand: () => number): Example | null {
+  const base = genLaws("any", "off", 1, rows, rand);
+  return base ? scaleExample(base, 111) : null;
+}
+
+function genDoubleMixedFormula10(rows: number, rand: () => number): Example | null {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const ex = genLaws("off", "any", 2, rows, rand);
+    if (!ex) continue;
+    if (ex.answer >= 0 && ex.answer <= 99 && ex.operands.every((operand) => isFullDigitNumber(operand, 2) && hasDifferentDigits(operand, 2))) return ex;
+  }
+  return null;
 }
 
 // Трёхзначные до 999: прямые поразрядные ходы без переносов и обменов.
@@ -406,9 +548,15 @@ function fallback(rows: number, taskType: TaskType): Example {
     movements: [4, 5, -8, 1, 7, -5, 3, -4, 6, -9],
     tens: [40, 50, -80, 10, 70, -50, 30, -40, 60, -90],
     double: [44, 55, -88, 11, 77, -55, 33, -44, 66, -99],
+    doubleMixed: [12, 36, -24, 41, -32, 53, -21, 14, 35, -42],
     triple: [438, 551, -882, 110, 327, -105, 220, -330, 101, -202],
+    tripleSame: [444, 555, -888, 111, 777, -555, 333, -444, 666, -999],
     formula5: [4, 1, -5, 2, -1, 3, -4, 5, -2, 1],
     formula10: [8, 2, -1, 3, -2, 5, -6, 4, -3, 1],
+    doubleSameFormula5: [44, 11, -55, 22, -11, 33, -44, 55, -22, 11],
+    doubleMixedFormula5: [34, 12, -45, 23, -12, 31, -24, 42, -13, 21],
+    doubleMixedFormula10: [18, 12, -21, 14, -13, 21, -24, 32, -31, 12],
+    tripleSameFormula5: [444, 111, -555, 222, -111, 333, -444, 555, -222, 111],
   };
   const pattern = patterns[taskType];
   const operands = Array.from({ length: rows }, (_, i) => pattern[i % pattern.length]);
@@ -432,6 +580,18 @@ export function generateExample(s: Settings, rand: () => number): Example {
     case "formula10":
       ex = genLaws("off", "any", 1, rows, rand);
       break;
+    case "doubleSameFormula5":
+      ex = genDoubleSameFormula5(rows, rand);
+      break;
+    case "doubleMixedFormula5":
+      ex = genDoubleMixedFormula5(rows, rand);
+      break;
+    case "doubleMixedFormula10":
+      ex = genDoubleMixedFormula10(rows, rand);
+      break;
+    case "tripleSameFormula5":
+      ex = genTripleSameFormula5(rows, rand);
+      break;
     case "movements":
       ex = genMovements(digits, rows, rand);
       break;
@@ -441,8 +601,14 @@ export function generateExample(s: Settings, rand: () => number): Example {
     case "double":
       ex = genDouble(rows, rand);
       break;
+    case "doubleMixed":
+      ex = genDoubleMixed(rows, rand);
+      break;
     case "triple":
       ex = genTriple(rows, rand);
+      break;
+    case "tripleSame":
+      ex = genTripleSame(rows, rand);
       break;
   }
   return ex ?? fallback(rows, s.taskType);
@@ -488,9 +654,15 @@ export const LEVELS: Level[] = [
       { id: "units", name: "Единицы 1-9", note: "Прямые ходы в единицах 1..9: без обмена через 5/10; например 4+5-8+1.", preset: { taskType: "movements", digits: 1, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "tens", name: "Десятки 10-90", note: "Та же логика прямых ходов, перенесённая на десятки.", preset: { taskType: "tens", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "double", name: "11-99", note: "Одинаковые двузначные числа по той же логике: 11/22/33/.../99.", preset: { taskType: "double", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "double-mixed", name: "Разные 10-99", note: "Двузначные разные числа без формул: каждый разряд проверяется отдельно, без переноса.", preset: { taskType: "doubleMixed", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "triple", name: "до 999", note: "Трёхзначные числа до 999: поразрядные прямые ходы без переносов.", preset: { taskType: "triple", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "triple-same", name: "111-999", note: "Одинаковые трёхзначные числа: 111/222/333/.../999 без формул.", preset: { taskType: "tripleSame", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "formula5", name: "Формулы на 5", note: "Отдельный блок формул на 5 по правилам и примерам методиста Mandarin.", preset: { taskType: "formula5", law5: "any", law10: "off", digits: 1, rows: 5, withFormula: true } },
       { id: "formula10", name: "Формулы на 10", note: "Отдельный блок формул на 10 по правилам и примерам методиста Mandarin.", preset: { taskType: "formula10", law5: "off", law10: "any", digits: 1, rows: 5, withFormula: true } },
+      { id: "double-same-formula5", name: "11-99 на 5", note: "Одинаковые двузначные числа с формулами на 5.", preset: { taskType: "doubleSameFormula5", law5: "any", law10: "off", digits: 2, rows: 5, withFormula: true } },
+      { id: "double-mixed-formula5", name: "Разные 10-99 на 5", note: "Двузначные разные числа с формулами на 5: каждый разряд проверяется отдельно.", preset: { taskType: "doubleMixedFormula5", law5: "any", law10: "off", digits: 2, rows: 5, withFormula: true } },
+      { id: "double-mixed-formula10", name: "Разные 10-99 на 10", note: "Двузначные разные числа с формулами на 10.", preset: { taskType: "doubleMixedFormula10", law5: "off", law10: "any", digits: 2, rows: 5, withFormula: true } },
+      { id: "triple-same-formula5", name: "111-999 на 5", note: "Одинаковые трёхзначные числа с формулами на 5.", preset: { taskType: "tripleSameFormula5", law5: "any", law10: "off", digits: 3, rows: 5, withFormula: true } },
     ],
   },
 ];

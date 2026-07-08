@@ -38,7 +38,20 @@ const initialSettings: Settings = {
   speak: false,
 };
 
-const taskOrder: TaskType[] = ["movements", "tens", "double", "triple", "formula5", "formula10"];
+const taskOrder: TaskType[] = [
+  "movements",
+  "tens",
+  "double",
+  "doubleMixed",
+  "triple",
+  "tripleSame",
+  "formula5",
+  "formula10",
+  "doubleSameFormula5",
+  "doubleMixedFormula5",
+  "doubleMixedFormula10",
+  "tripleSameFormula5",
+];
 const rowPresets = [2, 3, 4, 5, 6, 10];
 const examplePresets = [1, 10, 20, 30, 50];
 const speedPresets = [3, 2, 1, 0.5, 0.1];
@@ -129,12 +142,12 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
       <div className="mt-5 space-y-5">
         <div>
           <div className="text-[12px] font-extrabold text-ink-faint">Блок</div>
-          <div className="mt-2 grid gap-2 min-[520px]:grid-cols-2 2xl:grid-cols-1 min-[1720px]:grid-cols-2">
+          <div className="mt-2 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-1 min-[1720px]:grid-cols-2">
             {taskOrder.map((taskType) => (
               <button
                 key={taskType}
                 onClick={() => applySettings(settingsForTask(settings, taskType))}
-                className={`rounded-xl border px-3 py-3 text-left text-[13px] font-extrabold ${settings.taskType === taskType ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}
+                className={`rounded-xl border px-3 py-3 text-left text-[12px] font-extrabold leading-snug ${settings.taskType === taskType ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}
               >
                 {TASK_LABELS[taskType]}
               </button>
@@ -339,9 +352,9 @@ function Trainer({ settings }: { settings: Settings }) {
               </div>
               <div className="mt-3 rounded-2xl border border-line bg-bg p-3 text-left">
                 <div className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">Пример</div>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-nowrap gap-2 overflow-x-auto pb-1">
                   {current.operands.map((operand, index) => (
-                    <span key={`${operand}-${index}`} className="rounded-xl border border-line bg-card px-3 py-1.5 text-[14px] font-black text-brand-dark">
+                    <span key={`${operand}-${index}`} className="shrink-0 rounded-xl border border-line bg-card px-3 py-1.5 text-[14px] font-black text-brand-dark">
                       {formatOperand(operand, index)}
                     </span>
                   ))}
