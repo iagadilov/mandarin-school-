@@ -336,6 +336,40 @@ function genMovements(digits: number, rows: number, rand: () => number): Example
   return null;
 }
 
+// Блоки "одинаковые ... на 5" тренируют именно формулы ±5:
+// после первого ряда каждый следующий ход должен быть формулой на 5, без ±10.
+function genUnitsFiveOnly(rows: number, rand: () => number): Example | null {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    let u = 5 + Math.floor(rand() * 5);
+    const deltas = [u];
+    const steps: Step[] = [{ delta: u, kind: "direct", running: u }];
+    let total = u;
+    let ok = true;
+
+    for (let i = 1; i < rows; i++) {
+      const cands: number[] = [];
+      for (let d = -4; d <= 4; d++) {
+        if (d === 0) continue;
+        const info = classify(u, d);
+        if (info && info.kind === "five" && info.carry === 0 && total + d >= 0 && total + d <= 9) cands.push(d);
+      }
+      if (!cands.length) {
+        ok = false;
+        break;
+      }
+      const d = pick(cands, rand);
+      const info = classify(u, d)!;
+      u = info.newU;
+      total += d;
+      deltas.push(d);
+      steps.push({ delta: d, kind: "five", running: total });
+    }
+
+    if (ok) return finalize(deltas, steps, total);
+  }
+  return null;
+}
+
 function scaleExample(ex: Example, factor: number): Example {
   const operands = ex.operands.map((n) => n * factor);
   const steps = ex.steps.map((s) => ({ ...s, delta: s.delta * factor, running: s.running * factor }));
@@ -384,26 +418,30 @@ function randomAbsDigits(digits: number, different: boolean, rand: () => number)
   return digits === 2 ? [1, 2] : [1, 2, 3].slice(0, digits);
 }
 
-type DigitMode = "direct" | "five";
+type DigitMode = "direct" | "five" | "ten";
+type DigitCandidate = { operand: number; next: number[]; fiveHit: boolean; tenHit: boolean };
 
 // Разные двузначные и другие поразрядные блоки: каждая цифра проверяется
 // отдельно, без скрытого переноса между разрядами.
 function genByDigits(rows: number, digits: number, mode: DigitMode, different: boolean, rand: () => number): Example | null {
+  const maxTotal = Math.pow(10, digits) - 1;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const current = randomAbsDigits(digits, different, rand);
     const first = digitsToNumber(current);
     const operands = [first];
     const steps: Step[] = [{ delta: first, kind: "direct", running: first }];
     let total = first;
-    let formulaHits = 0;
+    let fiveHits = 0;
+    let tenHits = 0;
     let ok = true;
 
     for (let row = 1; row < rows; row++) {
-      const candidates: { operand: number; next: number[]; hit: boolean }[] = [];
+      const candidates: DigitCandidate[] = [];
       for (const sign of [1, -1]) {
         for (let sample = 0; sample < 80; sample++) {
           const absDigits = randomAbsDigits(digits, different, rand);
-          let hit = false;
+          let fiveHit = false;
+          let tenHit = false;
           let valid = true;
           const next = [...current];
 
@@ -411,7 +449,7 @@ function genByDigits(rows: number, digits: number, mode: DigitMode, different: b
             const delta = sign * absDigits[index];
             if (delta === 0) continue;
             const info = classify(current[index], delta);
-            if (!info || info.carry !== 0) {
+            if (!info || (info.carry !== 0 && mode !== "ten")) {
               valid = false;
               break;
             }
@@ -423,20 +461,23 @@ function genByDigits(rows: number, digits: number, mode: DigitMode, different: b
               valid = false;
               break;
             }
-            if (info.kind === "five") hit = true;
+            if (info.kind === "five") fiveHit = true;
+            if (info.kind === "ten" || info.kind === "ten5") tenHit = true;
             next[index] = info.newU;
           }
 
           const operand = sign * digitsToNumber(absDigits);
-          if (valid && operand !== 0 && total + operand >= 0) {
-            candidates.push({ operand, next, hit });
+          const nextTotal = total + operand;
+          if (valid && operand !== 0 && nextTotal >= 0 && nextTotal <= maxTotal) {
+            candidates.push({ operand, next, fiveHit, tenHit });
           }
         }
       }
 
-      const needFormula = mode === "five" && formulaHits === 0;
-      const formulaCandidates = candidates.filter((candidate) => candidate.hit);
-      const pool = needFormula && formulaCandidates.length ? formulaCandidates : candidates;
+      const needFive = mode === "five" && fiveHits === 0;
+      const needTen = mode === "ten" && tenHits === 0;
+      const formulaCandidates = candidates.filter((candidate) => (needFive && candidate.fiveHit) || (needTen && candidate.tenHit));
+      const pool = (needFive || needTen) && formulaCandidates.length ? formulaCandidates : candidates;
       if (!pool.length) {
         ok = false;
         break;
@@ -446,25 +487,27 @@ function genByDigits(rows: number, digits: number, mode: DigitMode, different: b
       operands.push(selected.operand);
       total += selected.operand;
       current.splice(0, current.length, ...selected.next);
-      if (selected.hit) formulaHits++;
-      steps.push({ delta: selected.operand, kind: selected.hit ? "five" : "direct", running: total });
+      if (selected.fiveHit) fiveHits++;
+      if (selected.tenHit) tenHits++;
+      steps.push({ delta: selected.operand, kind: selected.tenHit ? "ten" : selected.fiveHit ? "five" : "direct", running: total });
     }
 
-    if (ok && (mode === "direct" || formulaHits > 0)) return finalize(operands, steps, total);
+    const formulaOk = mode === "direct" || (mode === "five" && fiveHits > 0) || (mode === "ten" && tenHits > 0);
+    if (ok && formulaOk) return finalize(operands, steps, total);
   }
   return null;
 }
 
 function genDoubleMixed(rows: number, rand: () => number): Example | null {
-  return genByDigits(rows, 2, "direct", true, rand);
+  return genByDigits(rows, 2, "direct", false, rand);
 }
 
 function genDoubleMixedFormula5(rows: number, rand: () => number): Example | null {
-  return genByDigits(rows, 2, "five", true, rand);
+  return genByDigits(rows, 2, "five", false, rand);
 }
 
 function genDoubleSameFormula5(rows: number, rand: () => number): Example | null {
-  const base = genLaws("any", "off", 1, rows, rand);
+  const base = genUnitsFiveOnly(rows, rand);
   return base ? scaleExample(base, 11) : null;
 }
 
@@ -479,12 +522,7 @@ function genTripleSameFormula5(rows: number, rand: () => number): Example | null
 }
 
 function genDoubleMixedFormula10(rows: number, rand: () => number): Example | null {
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const ex = genLaws("off", "any", 2, rows, rand);
-    if (!ex) continue;
-    if (ex.answer >= 0 && ex.answer <= 99 && ex.operands.every((operand) => isFullDigitNumber(operand, 2) && hasDifferentDigits(operand, 2))) return ex;
-  }
-  return null;
+  return genByDigits(rows, 2, "ten", false, rand);
 }
 
 // Трёхзначные до 999: прямые поразрядные ходы без переносов и обменов.
