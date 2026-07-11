@@ -92,6 +92,14 @@ function validSame2dFormula5(operands) {
     rows.slice(1).every((row) => row.kinds.some((kind) => kind === "five"));
 }
 
+function validTensFormula5(operands) {
+  if (!operands.every((operand) => Math.abs(operand) >= 10 && Math.abs(operand) % 10 === 0)) return false;
+  const unitOperands = reduceScale(operands, 10);
+  const rows = analyzeByDigits(unitOperands, 1);
+  return rows.every((row) => row.total >= 0 && row.total <= 9 && !row.kinds.includes("ten") && !row.kinds.includes("invalid")) &&
+    rows.slice(1).every((row) => row.kinds.some((kind) => kind === "five"));
+}
+
 function validDifferent2dFormula5(operands) {
   const rows = analyzeByDigits(operands, 2);
   return operands.every((operand) => Math.abs(operand) >= 10) &&
@@ -147,6 +155,9 @@ assert.equal(validSame2dFormula5([88, -44, 22, -33, 44]), true, "2D same +5 samp
 assert.equal(validSame2dFormula5([66, -44, 33, -22, 33]), true, "2D same +5 sample 2 must be valid");
 assert.equal(validSame2dFormula5([55, 11, 22, -33]), false, "2D same +5 without formulas must be rejected");
 assert.equal(validSame2dFormula5([44, -22, -11, 55]), false, "2D same +5 bad sample 2 must be rejected");
+
+assert.equal(validTensFormula5([50, -10, 10, -40, 40]), true, "tens +5 sample must be valid");
+assert.equal(validTensFormula5([50, 10, 20, -30]), false, "tens +5 without formulas must be rejected");
 
 assert.equal(validDifferent2dFormula5([47, -33, 42, -34]), true, "2D different +5 sample 1 must be valid");
 assert.equal(validDifferent2dFormula5([80, 17, -14, 12]), true, "2D different +5 sample 2 must be valid");

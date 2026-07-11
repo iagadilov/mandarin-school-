@@ -38,22 +38,15 @@ const initialSettings: Settings = {
   speak: false,
 };
 
-const taskOrder: TaskType[] = [
-  "movements",
-  "tens",
-  "double",
-  "doubleMixed",
-  "triple",
-  "tripleSame",
-  "formula5",
-  "formula10",
-  "doubleSameFormula5",
-  "doubleMixedFormula5",
-  "doubleMixedFormula10",
-  "tripleSameFormula5",
+const taskGroups: { id: string; title: string; tasks: TaskType[] }[] = [
+  { id: "units", title: "Единицы", tasks: ["movements", "formula5", "formula10"] },
+  { id: "tens", title: "Десятки", tasks: ["tens", "tensFormula5"] },
+  { id: "double-same", title: "Одинаковые двузначные", tasks: ["double", "doubleSameFormula5"] },
+  { id: "double-mixed", title: "Разные двузначные", tasks: ["doubleMixed", "doubleMixedFormula5", "doubleMixedFormula10"] },
+  { id: "triple", title: "Трёхзначные", tasks: ["triple", "tripleSame", "tripleSameFormula5"] },
 ];
-const rowPresets = [2, 3, 4, 5, 6, 10];
-const examplePresets = [1, 10, 20, 30, 50];
+const rowPresets = [2, 3, 4, 5, 6, 10, 15, 20];
+const examplePresets = [1, 5, 10, 15, 20];
 const speedPresets = [3, 2, 1, 0.5, 0.1];
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const formatOperand = (value: number, index: number) => (index === 0 ? String(value) : signed(value));
@@ -125,9 +118,15 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
   const level = findLevel(settings.levelId);
   const lesson = findLesson(level, settings.lessonId);
   const est = formatDuration(estimateSeconds(settings));
+  const activeGroup = taskGroups.find((group) => group.tasks.includes(settings.taskType))?.id ?? taskGroups[0].id;
+  const [openGroup, setOpenGroup] = useState(activeGroup);
   const applySettings = (next: Settings) => {
     setSettings(next);
   };
+
+  useEffect(() => {
+    setOpenGroup(activeGroup);
+  }, [activeGroup]);
 
   return (
     <section className="rounded-2xl border border-line bg-card p-4 transition sm:p-5">
@@ -142,31 +141,53 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
       <div className="mt-5 space-y-5">
         <div>
           <div className="text-[12px] font-extrabold text-ink-faint">Блок</div>
-          <div className="mt-2 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-1 min-[1720px]:grid-cols-2">
-            {taskOrder.map((taskType) => (
-              <button
-                key={taskType}
-                onClick={() => applySettings(settingsForTask(settings, taskType))}
-                className={`rounded-xl border px-3 py-3 text-left text-[12px] font-extrabold leading-snug ${settings.taskType === taskType ? "border-brand bg-brand-tint text-brand-dark" : "border-line bg-bg text-ink-soft"}`}
-              >
-                {TASK_LABELS[taskType]}
-              </button>
-            ))}
+          <div className="mt-2 space-y-2">
+            {taskGroups.map((group) => {
+              const isOpen = openGroup === group.id;
+              const isActive = group.id === activeGroup;
+              return (
+                <div key={group.id} className={`overflow-hidden rounded-xl border ${isActive ? "border-brand/70 bg-brand-tint" : "border-line bg-bg"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroup(isOpen ? "" : group.id)}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+                  >
+                    <span className={`text-[13px] font-black ${isActive ? "text-brand-dark" : "text-ink"}`}>{group.title}</span>
+                    <span className={`text-[13px] font-black transition ${isOpen ? "rotate-90 text-brand" : "text-ink-faint"}`}>▶</span>
+                  </button>
+                  {isOpen && (
+                    <div className="grid gap-2 border-t border-line/70 p-2">
+                      {group.tasks.map((taskType) => (
+                        <button
+                          key={taskType}
+                          onClick={() => applySettings(settingsForTask(settings, taskType))}
+                          className={`rounded-lg border px-3 py-2.5 text-left text-[12px] font-extrabold leading-snug ${
+                            settings.taskType === taskType ? "border-brand bg-brand text-white shadow-sm" : "border-line bg-card text-ink-soft"
+                          }`}
+                        >
+                          {TASK_LABELS[taskType]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <p className="mt-2 text-[11.5px] leading-relaxed text-ink-faint">{lesson.note}</p>
         </div>
 
         <label className="block">
           <span className="text-[12px] font-extrabold text-ink-faint">Количество чисел в примере: {settings.rows}</span>
-          <div className="mt-2 grid grid-cols-3 gap-2 min-[520px]:grid-cols-6 xl:grid-cols-3 2xl:grid-cols-6">
+          <div className="mt-2 grid grid-cols-4 gap-2">
             {rowPresets.map((value) => (
               <PresetButton key={value} active={settings.rows === value} onClick={() => applySettings({ ...settings, rows: value })}>
                 {value}
               </PresetButton>
             ))}
           </div>
-          <input type="range" min={2} max={10} value={settings.rows} onChange={(e) => applySettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
-          <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 2 до 10</span>
+          <input type="range" min={2} max={20} value={settings.rows} onChange={(e) => applySettings({ ...settings, rows: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
+          <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 2 до 20</span>
         </label>
 
         <label className="block">
@@ -178,8 +199,8 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
               </PresetButton>
             ))}
           </div>
-          <input type="range" min={1} max={50} value={settings.examples} onChange={(e) => applySettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
-          <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 1 до 50</span>
+          <input type="range" min={1} max={20} value={settings.examples} onChange={(e) => applySettings({ ...settings, examples: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
+          <span className="mt-1 block text-[10.5px] font-bold text-ink-faint">от 1 до 20</span>
         </label>
 
         <div>

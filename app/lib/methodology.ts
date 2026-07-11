@@ -20,6 +20,7 @@ export type TaskType =
   | "tripleSame"
   | "formula5"
   | "formula10"
+  | "tensFormula5"
   | "doubleSameFormula5"
   | "doubleMixedFormula5"
   | "doubleMixedFormula10"
@@ -32,8 +33,8 @@ export type Settings = {
   law5: LawSel; // закон на 5: any | off | [deltas]
   law10: LawSel; // закон на 10: any | off | [deltas]
   digits: number; // разрядность чисел, 1..4
-  rows: number; // чисел в примере (рядов), 2..10
-  examples: number; // примеров в серии, 1..50
+  rows: number; // чисел в примере (рядов), 2..20
+  examples: number; // примеров в серии, 1..20
   speed: number; // секунд на число, 5..0.1
   withFormula: boolean; // legacy field kept for stable settings hashing; visible UI uses separate formula blocks
   language: Language;
@@ -104,6 +105,7 @@ export const TASK_LABELS: Record<TaskType, string> = {
   tripleSame: "Одинаковые 111-999",
   formula5: "Формулы на 5",
   formula10: "Формулы на 10",
+  tensFormula5: "Десятки на 5",
   doubleSameFormula5: "11-99 на 5",
   doubleMixedFormula5: "Разные двузначные на 5",
   doubleMixedFormula10: "Разные двузначные на 10",
@@ -382,6 +384,11 @@ function genTens(rows: number, rand: () => number): Example | null {
   return base ? scaleExample(base, 10) : null;
 }
 
+function genTensFormula5(rows: number, rand: () => number): Example | null {
+  const base = genUnitsFiveOnly(rows, rand);
+  return base ? scaleExample(base, 10) : null;
+}
+
 // Одинаковые двузначные без формул: 11/22/33/.../99 как x11 от единиц 1..9.
 function genDouble(rows: number, rand: () => number): Example | null {
   const base = genMovements(1, rows, rand);
@@ -591,6 +598,7 @@ function fallback(rows: number, taskType: TaskType): Example {
     tripleSame: [444, 555, -888, 111, 777, -555, 333, -444, 666, -999],
     formula5: [4, 1, -5, 2, -1, 3, -4, 5, -2, 1],
     formula10: [8, 2, -1, 3, -2, 5, -6, 4, -3, 1],
+    tensFormula5: [50, -10, 10, -40, 40, -10, 20, -20, 30, -30],
     doubleSameFormula5: [44, 11, -55, 22, -11, 33, -44, 55, -22, 11],
     doubleMixedFormula5: [34, 12, -45, 23, -12, 31, -24, 42, -13, 21],
     doubleMixedFormula10: [18, 12, -21, 14, -13, 21, -24, 32, -31, 12],
@@ -608,7 +616,7 @@ function fallback(rows: number, taskType: TaskType): Example {
 }
 
 export function generateExample(s: Settings, rand: () => number): Example {
-  const rows = Math.max(2, Math.min(10, s.rows));
+  const rows = Math.max(2, Math.min(20, s.rows));
   const digits = Math.max(1, Math.min(4, s.digits));
   let ex: Example | null = null;
   switch (s.taskType) {
@@ -617,6 +625,9 @@ export function generateExample(s: Settings, rand: () => number): Example {
       break;
     case "formula10":
       ex = genLaws("off", "any", 1, rows, rand);
+      break;
+    case "tensFormula5":
+      ex = genTensFormula5(rows, rand);
       break;
     case "doubleSameFormula5":
       ex = genDoubleSameFormula5(rows, rand);
@@ -653,15 +664,15 @@ export function generateExample(s: Settings, rand: () => number): Example {
 }
 
 export function generateSession(settings: Settings, seed: number): Example[] {
-  const count = Math.max(1, Math.min(50, settings.examples));
+  const count = Math.max(1, Math.min(20, settings.examples));
   const rand = makeRng(hashSettings(settings, seed));
   return Array.from({ length: count }, (_, i) => ({ ...generateExample(settings, rand), id: i + 1 }));
 }
 
 // Ориентировочное время серии (как в эталоне): показ чисел + буфер на ответ.
 export function estimateSeconds(s: Settings): number {
-  const rows = Math.max(2, Math.min(10, s.rows));
-  const examples = Math.max(1, Math.min(50, s.examples));
+  const rows = Math.max(2, Math.min(20, s.rows));
+  const examples = Math.max(1, Math.min(20, s.examples));
   const show = examples * rows * s.speed;
   const answerBuffer = examples * 3.5;
   return Math.round(show + answerBuffer);
@@ -691,6 +702,7 @@ export const LEVELS: Level[] = [
     lessons: [
       { id: "units", name: "Единицы 1-9", note: "Прямые ходы в единицах 1..9: без обмена через 5/10; например 4+5-8+1.", preset: { taskType: "movements", digits: 1, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "tens", name: "Десятки 10-90", note: "Та же логика прямых ходов, перенесённая на десятки.", preset: { taskType: "tens", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
+      { id: "tens-formula5", name: "Десятки на 5", note: "Десятки с формулами на 5: 10/20/30/40 отрабатываются как формулы ±5 в разряде десятков.", preset: { taskType: "tensFormula5", law5: "any", law10: "off", digits: 2, rows: 5, withFormula: true } },
       { id: "double", name: "11-99", note: "Одинаковые двузначные числа по той же логике: 11/22/33/.../99.", preset: { taskType: "double", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "double-mixed", name: "Разные 10-99", note: "Двузначные разные числа без формул: каждый разряд проверяется отдельно, без переноса.", preset: { taskType: "doubleMixed", digits: 2, rows: 4, withFormula: false, law5: "off", law10: "off" } },
       { id: "triple", name: "до 999", note: "Трёхзначные числа до 999: поразрядные прямые ходы без переносов.", preset: { taskType: "triple", digits: 3, rows: 4, withFormula: false, law5: "off", law10: "off" } },
