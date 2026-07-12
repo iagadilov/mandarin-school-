@@ -82,9 +82,9 @@ function Logo() {
 function Metric({ label, value, tone = "brand" }: { label: string; value: string; tone?: "brand" | "green" | "ink" | "red" }) {
   const toneCls = tone === "green" ? "text-green" : tone === "ink" ? "text-ink" : tone === "red" ? "text-red" : "text-brand";
   return (
-    <div className="rounded-xl border border-line bg-card p-4">
-      <div className="text-[11px] font-bold text-ink-faint">{label}</div>
-      <div className={`mt-1 text-[26px] font-black tracking-tight ${toneCls}`}>{value}</div>
+    <div className="flex min-h-[118px] flex-col items-center justify-between rounded-xl border border-line bg-card p-4 text-center">
+      <div className="flex min-h-9 items-center justify-center text-[11px] font-bold leading-tight text-ink-faint">{label}</div>
+      <div className={`mt-2 w-full text-[34px] font-black leading-none tracking-tight ${toneCls}`}>{value}</div>
     </div>
   );
 }
@@ -244,6 +244,8 @@ function Trainer({ settings }: { settings: Settings }) {
 
   const current = session[exampleIndex];
   const activeOperand = current?.operands[operandIndex] ?? 0;
+  const visibleOperand = operandIndex === 0 ? `${activeOperand}` : signed(activeOperand);
+  const numberSizeClass = visibleOperand.length >= 4 ? "text-[82px] sm:text-[128px] xl:text-[150px]" : "text-[96px] sm:text-[150px] xl:text-[180px]";
   const progress = ((exampleIndex + (phase === "answer" || phase === "result" ? 1 : operandIndex / Math.max(1, current?.operands.length ?? 1))) / session.length) * 100;
   const hasAnswer = input.trim().length > 0;
 
@@ -346,8 +348,8 @@ function Trainer({ settings }: { settings: Settings }) {
           )}
           {phase === "countdown" && <div className="text-[90px] font-black sm:text-[140px]">{countdown || "Start"}</div>}
           {phase === "showing" && (
-            <div className="rounded-[30px] bg-white/96 px-10 py-9 text-[72px] font-black tracking-tight text-brand-dark shadow-xl sm:rounded-[34px] sm:px-20 sm:py-14 sm:text-[128px]">
-              {operandIndex === 0 ? activeOperand : signed(activeOperand)}
+            <div className={`flex min-h-[190px] min-w-[190px] max-w-full items-center justify-center rounded-[30px] bg-white/96 px-9 py-8 font-black leading-none tracking-tight text-brand-dark shadow-xl sm:min-h-[260px] sm:min-w-[260px] sm:rounded-[34px] sm:px-16 sm:py-12 xl:min-h-[300px] xl:min-w-[300px] ${numberSizeClass}`}>
+              <span className="whitespace-nowrap">{visibleOperand}</span>
             </div>
           )}
           {phase === "paused" && (
@@ -366,7 +368,7 @@ function Trainer({ settings }: { settings: Settings }) {
           )}
           {phase === "result" && current && (
             <div className="w-full max-w-lg rounded-[28px] bg-white/95 p-5 text-ink shadow-xl">
-              <div className={`text-[32px] font-black ${lastOk ? "text-green" : "text-red"}`}>{lastOk ? "Верно" : "Неверно"}</div>
+              <div className={`text-[40px] font-black leading-none sm:text-[48px] ${lastOk ? "text-green" : "text-red"}`}>{lastOk ? "Верно" : "Неверно"}</div>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <Metric label="Ваш ответ" value={input || "-"} tone="ink" />
                 <Metric label="Правильный ответ" value={`${current.answer}`} tone={lastOk ? "green" : "brand"} />
