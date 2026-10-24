@@ -205,7 +205,7 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
 
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-extrabold text-ink-faint">Скорость показа</span>
+            <span className="text-[12px] font-extrabold text-ink-faint">Время показа числа</span>
             <b className="text-brand-dark">{settings.speed.toFixed(1)} с</b>
           </div>
           <div className="mt-2 grid grid-cols-5 gap-2">
@@ -216,6 +216,7 @@ function SettingsPanel({ settings, setSettings }: { settings: Settings; setSetti
             ))}
           </div>
           <input type="range" min={0.1} max={5} step={0.1} value={settings.speed} onChange={(e) => applySettings({ ...settings, speed: Number(e.target.value) })} className="mt-3 w-full accent-[var(--brand)]" />
+          <p className="mt-2 text-[11px] text-ink-faint">Между числами — пауза 0,1 с.</p>
           <div className="mt-1 flex justify-between text-[10.5px] font-bold text-ink-faint">
             <span>0.1 с</span>
             <span>5 с</span>
@@ -237,6 +238,7 @@ function Trainer({ settings }: { settings: Settings }) {
   const [countdown, setCountdown] = useState(3);
   const [exampleIndex, setExampleIndex] = useState(0);
   const [operandIndex, setOperandIndex] = useState(0);
+  const [betweenOperands, setBetweenOperands] = useState(false);
   const [input, setInput] = useState("");
   const [correct, setCorrect] = useState(0);
   const [lastOk, setLastOk] = useState<boolean | null>(null);
@@ -254,6 +256,7 @@ function Trainer({ settings }: { settings: Settings }) {
     setCountdown(3);
     setExampleIndex(0);
     setOperandIndex(0);
+    setBetweenOperands(false);
     setInput("");
     setCorrect(0);
     setLastOk(null);
@@ -275,18 +278,22 @@ function Trainer({ settings }: { settings: Settings }) {
       if (operandIndex >= current.operands.length - 1) {
         setPhase("answer");
         window.setTimeout(() => inputRef.current?.focus(), 50);
+      } else if (!betweenOperands) {
+        setBetweenOperands(true);
       } else {
+        setBetweenOperands(false);
         setOperandIndex((value) => value + 1);
       }
-    }, Math.max(100, settings.speed * 1000));
+    }, betweenOperands ? 100 : Math.max(100, settings.speed * 1000));
     return () => window.clearTimeout(timer);
-  }, [phase, current, operandIndex, settings.speed]);
+  }, [phase, current, operandIndex, settings.speed, betweenOperands]);
 
   function start() {
     setSeed((value) => value + 1);
     setCountdown(3);
     setExampleIndex(0);
     setOperandIndex(0);
+    setBetweenOperands(false);
     setInput("");
     setCorrect(0);
     setLastOk(null);
@@ -310,6 +317,7 @@ function Trainer({ settings }: { settings: Settings }) {
     }
     setExampleIndex((value) => value + 1);
     setOperandIndex(0);
+    setBetweenOperands(false);
     setInput("");
     setLastOk(null);
     setPhase("showing");
@@ -320,6 +328,7 @@ function Trainer({ settings }: { settings: Settings }) {
     setCountdown(3);
     setExampleIndex(0);
     setOperandIndex(0);
+    setBetweenOperands(false);
     setInput("");
     setCorrect(0);
     setLastOk(null);
@@ -349,7 +358,7 @@ function Trainer({ settings }: { settings: Settings }) {
           {phase === "countdown" && <div className="text-[90px] font-black sm:text-[140px]">{countdown || "Start"}</div>}
           {phase === "showing" && (
             <div className={`flex min-h-[190px] min-w-[190px] max-w-full items-center justify-center rounded-[30px] bg-white/96 px-9 py-8 font-black leading-none tracking-tight text-brand-dark shadow-xl sm:min-h-[260px] sm:min-w-[260px] sm:rounded-[34px] sm:px-16 sm:py-12 xl:min-h-[300px] xl:min-w-[300px] ${numberSizeClass}`}>
-              <span className="whitespace-nowrap">{visibleOperand}</span>
+              <span className={`whitespace-nowrap ${betweenOperands ? "invisible" : ""}`}>{visibleOperand}</span>
             </div>
           )}
           {phase === "paused" && (

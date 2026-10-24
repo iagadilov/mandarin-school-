@@ -673,7 +673,7 @@ export function generateSession(settings: Settings, seed: number): Example[] {
 export function estimateSeconds(s: Settings): number {
   const rows = Math.max(2, Math.min(20, s.rows));
   const examples = Math.max(1, Math.min(20, s.examples));
-  const show = examples * rows * s.speed;
+  const show = examples * (rows * s.speed + (rows - 1) * 0.1);
   const answerBuffer = examples * 3.5;
   return Math.round(show + answerBuffer);
 }
