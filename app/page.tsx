@@ -23,6 +23,8 @@ const IArrow = Icon(<><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>);
 
 type Phase = "ready" | "countdown" | "showing" | "paused" | "answer" | "result" | "summary";
 
+const START_SEQUENCE: Record<number, string> = { 3: "На старт!", 2: "Внимание!", 1: "Марш!" };
+
 const initialSettings: Settings = {
   levelId: "stage-1",
   lessonId: "units",
@@ -244,6 +246,15 @@ function Trainer({ settings }: { settings: Settings }) {
   const [lastOk, setLastOk] = useState<boolean | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const trainerRef = useRef<HTMLElement>(null);
+
+  const keepTrainerInView = () => {
+    window.requestAnimationFrame(() => {
+      trainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+
   const current = session[exampleIndex];
   const activeOperand = current?.operands[operandIndex] ?? 0;
   const visibleOperand = operandIndex === 0 ? `${activeOperand}` : signed(activeOperand);
@@ -268,7 +279,7 @@ function Trainer({ settings }: { settings: Settings }) {
       setPhase("showing");
       return;
     }
-    const timer = window.setTimeout(() => setCountdown((value) => value - 1), 650);
+    const timer = window.setTimeout(() => setCountdown((value) => value - 1), 850);
     return () => window.clearTimeout(timer);
   }, [phase, countdown]);
 
@@ -277,7 +288,7 @@ function Trainer({ settings }: { settings: Settings }) {
     const timer = window.setTimeout(() => {
       if (operandIndex >= current.operands.length - 1) {
         setPhase("answer");
-        window.setTimeout(() => inputRef.current?.focus(), 50);
+        window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 50);
       } else if (!betweenOperands) {
         setBetweenOperands(true);
       } else {
@@ -307,7 +318,9 @@ function Trainer({ settings }: { settings: Settings }) {
     const ok = Number.isFinite(value) && value === current.answer;
     setCorrect((value) => value + (ok ? 1 : 0));
     setLastOk(ok);
+    inputRef.current?.blur();
     setPhase("result");
+    keepTrainerInView();
   }
 
   function next() {
@@ -321,6 +334,7 @@ function Trainer({ settings }: { settings: Settings }) {
     setInput("");
     setLastOk(null);
     setPhase("showing");
+    keepTrainerInView();
   }
 
   function newTraining() {
@@ -335,7 +349,7 @@ function Trainer({ settings }: { settings: Settings }) {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-2 sm:p-4">
+    <section ref={trainerRef} className="scroll-mt-3 rounded-2xl border border-line bg-card p-2 sm:p-4">
       <div className="trainer-surface relative overflow-hidden rounded-2xl p-4 text-white sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Badge tone="amber">{TASK_LABELS[settings.taskType]}</Badge>
@@ -355,7 +369,7 @@ function Trainer({ settings }: { settings: Settings }) {
               <button onClick={start} className="mt-6 rounded-2xl bg-white px-8 py-4 text-[15px] font-black text-brand-dark shadow-xl">Начать тренировку</button>
             </>
           )}
-          {phase === "countdown" && <div className="text-[90px] font-black sm:text-[140px]">{countdown || "Start"}</div>}
+          {phase === "countdown" && <div className="text-[48px] font-black sm:text-[76px]">{START_SEQUENCE[countdown] ?? "Марш!"}</div>}
           {phase === "showing" && (
             <div className={`flex min-h-[190px] min-w-[190px] max-w-full items-center justify-center rounded-[30px] bg-white/96 px-9 py-8 font-black leading-none tracking-tight text-brand-dark shadow-xl sm:min-h-[260px] sm:min-w-[260px] sm:rounded-[34px] sm:px-16 sm:py-12 xl:min-h-[300px] xl:min-w-[300px] ${numberSizeClass}`}>
               <span className={`whitespace-nowrap ${betweenOperands ? "invisible" : ""}`}>{visibleOperand}</span>
